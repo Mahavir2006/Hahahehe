@@ -114,7 +114,9 @@ def explain_change(prev: Optional[Dict[str, Any]], curr: Dict[str, Any], asset_i
             continue
         reasons.append({"feature": f, "label": risk.FACTOR_LABELS.get(f, f), "from_value": p["features"].get(f), "to_value": c["features"].get(f),
                         "delta_value": round(dv, 6), "delta_contribution_logodds": round(ds, 6)})
-    reasons.sort(key=lambda r: (-abs(r["delta_contribution_logodds"]), -abs(r["delta_value"])))
+    # features whose value changed come first; SHAP-only movers (value unchanged, contribution shifted through
+    # interactions in the trees) follow and are worded as such
+    reasons.sort(key=lambda r: (r["delta_value"] == 0, -abs(r["delta_contribution_logodds"]), -abs(r["delta_value"])))
     if p.get("likelihood_mult") != c.get("likelihood_mult"):
         reasons.insert(0, {"feature": "likelihood_multiplier", "label": "Mitigation multiplier", "from_value": p.get("likelihood_mult"),
                            "to_value": c.get("likelihood_mult"), "delta_value": round((c.get("likelihood_mult") or 1) - (p.get("likelihood_mult") or 1), 6),
@@ -124,10 +126,91 @@ def explain_change(prev: Optional[Dict[str, Any]], curr: Dict[str, Any], asset_i
                            "to_value": curr.get("model_version"), "delta_value": 0.0, "delta_contribution_logodds": 0.0})
     reasons = reasons[:top]
     for r in reasons:
-        r["text"] = f"{r['label']} {_fmt(r['from_value'])} -> {_fmt(r['to_value'])}"
+        if r["delta_value"] == 0 and r["feature"] not in ("model_version",):
+            r["text"] = f"{r['label']} unchanged at {_fmt(r['to_value'])}, contribution {r['delta_contribution_logodds']:+.3f} log-odds"
+        else:
+            r["text"] = f"{r['label']} {_fmt(r['from_value'])} -> {_fmt(r['to_value'])}"
     sentence = f"risk {p['risk_bp'] / 100:g} to {c['risk_bp'] / 100:g}"
     if reasons:
         sentence += ": " + "; ".join(r["text"] for r in reasons)
     return {"asset_id": asset_id, "from_sim_day": prev["sim_day"] if prev else None, "to_sim_day": curr["sim_day"],
             "from_risk_bp": p["risk_bp"], "to_risk_bp": c["risk_bp"], "from_band": p["band"], "to_band": c["band"],
             "reasons": reasons, "text": sentence}
+
+
+# ------------------------------------------------------------------ why (WP6)
+def cascade_assumptions() -> Dict[str, Any]:
+    from backend.graph import cascade as C
+
+    return {
+        "note": "hand-set constants (assumptions, not learned); see docs/SENSITIVITY.md",
+        "EDGE_WEIGHT": C.EDGE_WEIGHT, "SERVICE_WEIGHT": C.SERVICE_WEIGHT, "BAND_P": C.BAND_P, "UNKNOWN_BAND": C.UNKNOWN_BAND,
+        "STRENGTH_W": C.STRENGTH_W, "risk_formula": "risk = 100 * likelihood * (0.3 + 0.7 * impact)",
+        "impact_weights": {"criticality": 0.45, "safety_critical": 0.20, "dependents": 0.15, "service_criticality": 0.20},
+        "what_if_multipliers": {"ENABLE_MONITORING": 0.85, "ISOLATE_ASSET": 0.3, "DISABLE_SERVICE_PORT": 0.9},
+    }
+
+
+def dependency_path(node: Any, aid: str) -> Dict[str, Any]:
+    g = node.graph
+    upstream, stack = [], list(g.depends_on.get(aid, []))
+    seen = {aid}
+    while stack:
+        cur = stack.pop(0)
+        if cur in seen:
+            continue
+        seen.add(cur)
+        upstream.append(cur)
+        stack += g.depends_on.get(cur, [])
+    services = [{"service_id": sid, "name": s["name"], "criticality": s["criticality"]} for sid, s in node.services.items() if aid in s["required_assets"]]
+    return {"depends_on": g.depends_on.get(aid, []), "upstream_transitive": upstream,
+            "dependents_transitive": sorted(g.transitive_dependents(aid)), "required_by_services": services,
+            "cross_org": "service-level cascade is computed from on-chain attestations: GET /api/cross-org/cascade"}
+
+
+def recommended_actions(node: Any, aid: str, score: Dict[str, Any]) -> List[Dict[str, Any]]:
+    from backend.agents.planner_agent import PlanBuilder
+    from backend.containment import level_of
+
+    pb = PlanBuilder(node)
+    groups = pb.groups([score], [aid], "remediate")
+    out = []
+    ctxs = node.contexts()
+    for g in groups:
+        w = risk.what_if(ctxs, [{"action": g["action"], "targets": [aid]}])
+        b, a = w["before_scores"][aid]["risk"], w["after_scores"][aid]["risk"]
+        out.append({"action": g["action"], "level": level_of(g["action"]), "asset_risk_before": b, "asset_risk_after": a,
+                    "asset_risk_delta": round(a - b, 4), "org_risk_before": w["risk_before"], "org_risk_after": w["risk_after"],
+                    "why": f"{g['action']}: {risk.ACTION_EFFECTS[g['action']]} (what-if recomputation with the same model)"})
+    out.sort(key=lambda x: x["asset_risk_delta"])
+    return out
+
+
+def why(node: Any, aid: str, detector: Any = None, sim_day: int = 0, epss_asof: Optional[str] = None, snapshot_commit: Optional[str] = None) -> Dict[str, Any]:
+    a = node.assets[aid]
+    inv = node.inventory[aid]
+    s = score_asset_v2(a)
+    shap = s["factors_shap"]
+    findings = detector.list(aid) if detector is not None else []
+    return {
+        "asset": {k: inv.get(k) for k in ("asset_id", "name", "type", "vendor", "model", "firmware_version", "zone", "criticality",
+                                          "safety_critical", "open_ports", "maintenance_window", "firmware_state")}
+                 | {"internet_exposed": a.internet_exposed, "default_credentials": a.default_credentials, "last_patched": a.last_patched,
+                    "days_since_patch": risk.days_since(a.last_patched), "supply_chain_flag": a.supply_chain_flag, "isolated": a.isolated,
+                    "likelihood_multiplier": a.likelihood_mult, "service_criticality": a.service_crit, "num_dependents": a.num_dependents},
+        "vulnerabilities": [{k: v.get(k) for k in ("cve", "cvss", "epss", "exploited", "source", "match", "epss_time_matched", "epss_missing",
+                                                   "advisory_id", "advisory_vendor", "cwe", "version_match")} for v in a.vulns],
+        "scores": {"likelihood": s["likelihood"], "impact": s["impact"], "risk": s["risk"], "band": s["band"],
+                   "likelihood_bp": s["likelihood_bp"], "impact_bp": s["impact_bp"], "risk_bp": s["risk_bp"], "band_bp": s["band_bp"],
+                   "formula": "risk_bp = round_half_up(likelihood_bp * (3000 + 7000 * impact_bp / 10000) / 10000)"},
+        "shap": {"unit": shap["unit"], "base_value": shap["base_value"], "factors": shap["factors"]},
+        "share_of_risk_bar": {"label": "share of risk (not SHAP)", "unit": "risk points = risk * shap / sum|shap|", "items": s["top_factors"]},
+        "dependency_path": dependency_path(node, aid),
+        "cascade_assumptions": cascade_assumptions(),
+        "freshness": {"sim_day": sim_day, "epss_asof": epss_asof, "epss_time_matched": False, "snapshot_commit": snapshot_commit,
+                      "model_version": s["model_version"], "model_source": s["model_source"]},
+        "findings": findings,
+        "recommended_actions": recommended_actions(node, aid, s),
+        "missing": s["missing"],
+        "source_tags": s["source_tags"],
+    }

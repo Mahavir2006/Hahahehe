@@ -1,0 +1,13 @@
+{
+  "note": "SYNTHETIC histories (linear drift + noise); statistical trend, not ML",
+  "histories": 2000,
+  "observed_days": 7,
+  "horizon_days": 60,
+  "seed": 11,
+  "histories_crossing_within_horizon": 1162,
+  "histories_not_crossing": 838,
+  "mae_days_holt": 7.506,
+  "mae_days_naive_last_value": 21.746,
+  "holt_missed_crossings": 25,
+  "holt_false_alarms_on_non_crossing": 42
+}

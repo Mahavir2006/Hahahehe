@@ -1,0 +1,69 @@
+{
+  "note": "rules evaluated on SIMULATED telemetry with injected labelled episodes; not real detection",
+  "asset_days": 27375,
+  "days": 365,
+  "episode_rate_per_asset_day": 0.01,
+  "seed": 7,
+  "rules": {
+    "r1_brute_force": {
+      "tp": 45,
+      "fp_maintenance": 0,
+      "fp_other": 0,
+      "fn": 0,
+      "episode_type": "brute_force",
+      "precision": 1.0,
+      "precision_excluding_maintenance_fp": 1.0,
+      "recall": 1.0
+    },
+    "r2_unexpected_remote": {
+      "tp": 43,
+      "fp_maintenance": 0,
+      "fp_other": 623,
+      "fn": 4,
+      "episode_type": "unexpected_remote_access",
+      "precision": 0.0646,
+      "precision_excluding_maintenance_fp": 0.0646,
+      "recall": 0.9149
+    },
+    "r3_lateral": {
+      "tp": 47,
+      "fp_maintenance": 0,
+      "fp_other": 0,
+      "fn": 0,
+      "episode_type": "lateral_movement",
+      "precision": 1.0,
+      "precision_excluding_maintenance_fp": 1.0,
+      "recall": 1.0
+    },
+    "r4_abnormal_ot": {
+      "tp": 17,
+      "fp_maintenance": 0,
+      "fp_other": 0,
+      "fn": 0,
+      "episode_type": "abnormal_ot_protocol",
+      "precision": 1.0,
+      "precision_excluding_maintenance_fp": 1.0,
+      "recall": 1.0
+    },
+    "r5_config_change": {
+      "tp": 39,
+      "fp_maintenance": 0,
+      "fp_other": 0,
+      "fn": 3,
+      "episode_type": "unexpected_config_change",
+      "precision": 1.0,
+      "precision_excluding_maintenance_fp": 1.0,
+      "recall": 0.9286
+    },
+    "r6_exploit_indicator": {
+      "tp": 53,
+      "fp_maintenance": 0,
+      "fp_other": 0,
+      "fn": 0,
+      "episode_type": "known_exploit_indicator",
+      "precision": 1.0,
+      "precision_excluding_maintenance_fp": 1.0,
+      "recall": 1.0
+    }
+  }
+}

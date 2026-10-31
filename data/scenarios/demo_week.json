@@ -1,0 +1,16 @@
+{
+  "name": "demo_week",
+  "note": "Scripted SIMULATED events for a reliable demo. CVE-2026-24858 is a real CISA KEV-listed Siemens CVE from data/real; assigning it to this asset on day 2 is scripted, not observed.",
+  "events": [
+    {"day": 2, "type": "add_vuln", "org": "power", "asset_id": "power-asset-001", "cve": "CVE-2026-24858",
+     "text": "Known-exploited Siemens CVE becomes known for the substation gateway"},
+    {"day": 3, "type": "set_field", "org": "power", "asset_id": "power-asset-003", "field": "internet_exposed", "value": true,
+     "text": "SCADA server becomes internet-exposed (misconfiguration)"},
+    {"day": 4, "type": "episode", "org": "power", "asset_id": "power-asset-009", "kind": "lateral_movement", "days": 1,
+     "text": "Lateral movement from the DMZ jump host (no dependents: a level-2 quarantine candidate)"},
+    {"day": 5, "type": "episode", "org": "hospital", "asset_id": "hospital-asset-002", "kind": "unexpected_remote_access", "days": 2,
+     "text": "Unexpected remote access to the medical device gateway"},
+    {"day": 6, "type": "action", "org": "power", "asset_id": "power-asset-001", "action": "PATCH",
+     "text": "Patch applied to the substation gateway"}
+  ]
+}
