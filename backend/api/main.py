@@ -122,6 +122,73 @@ def create_app(system: Optional[CascadeShieldSystem] = None) -> FastAPI:
         n = S().nodes[org]
         return [{**v, "service_id": k, "band": n.service_band()[k]["band"], "risk": n.service_band()[k]["risk"]} for k, v in n.services.items()]
 
+    def asset_of(org: str, asset_id: str, r: str):
+        need_org(org, r)
+        n = S().nodes[org]
+        if asset_id not in n.assets:
+            raise HTTPException(404, "unknown asset")
+        return n, n.assets[asset_id]
+
+    @app.get("/api/orgs/{org}/assets/{asset_id}/why")
+    def asset_why(org: str, asset_id: str, r: str = Depends(role)):
+        from backend.risk import model as M
+
+        _, a = asset_of(org, asset_id, r)
+        return M.why(a)
+
+    @app.get("/api/orgs/{org}/assets/{asset_id}/what-changed")
+    def asset_what_changed(org: str, asset_id: str, r: str = Depends(role)):
+        """SHAP-delta contributors to the change in compromise likelihood since the node booted."""
+        from backend.risk import inference as I, model as M
+
+        n, a = asset_of(org, asset_id, r)
+        before, after = n.feature_baseline[asset_id], M.features_of(a)
+        return {"asset_id": asset_id, "since": "node start", "changes": I.what_changed(before, after)}
+
+    @app.get("/api/orgs/{org}/assets/{asset_id}/trend")
+    def asset_trend(org: str, asset_id: str, r: str = Depends(role)):
+        from backend.risk import trend
+
+        n, _ = asset_of(org, asset_id, r)
+        return trend.asset_trend(getattr(n, "history", []), asset_id)
+
+    @app.get("/api/orgs/{org}/trends")
+    def org_trends(org: str, r: str = Depends(role)):
+        """M4 for every asset: direction, slope and days to the next band (statistical, not ML)."""
+        from backend.risk import trend
+
+        need_org(org, r)
+        n = S().nodes[org]
+        return [trend.asset_trend(getattr(n, "history", []), aid) for aid in n.assets]
+
+    @app.get("/api/orgs/{org}/findings/detections")
+    def detections(org: str, r: str = Depends(role)):
+        """Detection-rule (active_attack) and configuration (exposure) findings; never mixed."""
+        need_org(org, r)
+        n = S().nodes[org]
+        return [{"asset_id": aid, **f} for aid, fs in n.detections.items() for f in fs]
+
+    @app.get("/api/ml/model")
+    def ml_model(r: str = Depends(role)):
+        """Model card: what is learned, how it was evaluated, and its limits. Contains no org data."""
+        from backend.common.config import settings
+        from backend.risk.inference import M1
+
+        m = M1.get()
+        metrics_p = ROOT / "backend" / "risk" / "artifacts" / "metrics.json"
+        mt = json.loads(metrics_p.read_text(encoding="utf-8")) if metrics_p.exists() else {}
+        ev = mt.get("evaluations", {})
+        return {
+            "model_version": m.version, "estimator": m.meta["config"]["estimator"], "calibration": m.meta["calibration"]["method"],
+            "operating_threshold": m.meta["operating_threshold"], "epss_source": m.meta["epss_source"], "labels": m.meta["labels"],
+            "band_thresholds": {"low_max": settings.risk_band_low_max, "medium_max": settings.risk_band_medium_max, "high_max": settings.risk_band_high_max},
+            "held_out_A": {k: {x: v.get(x) for x in ("roc_auc", "pr_auc", "top5_precision")} for k, v in ev.get("A_grouped", {}).items()},
+            "generator_B": {k: {x: v.get(x) for x in ("roc_auc", "pr_auc")} for k, v in ev.get("B_all", {}).items()},
+            "accuracy_ceiling": mt.get("accuracy_ceiling"), "pass_criteria": mt.get("pass_criteria"),
+            "learned": ["M1 compromise likelihood"], "deterministic": ["impact", "final risk", "cascade", "what-if wiring", "critic", "approval gate", "detection rules D"],
+            "statistical": ["M4 trend"],
+        }
+
     @app.get("/api/orgs/{org}/graph")
     def graph(org: str, r: str = Depends(role)):
         need_org(org, r)
@@ -145,6 +212,7 @@ def create_app(system: Optional[CascadeShieldSystem] = None) -> FastAPI:
         s.indexer.sync()
         from backend.agents.cascade_agent import CascadeAgent
 
+        need_org(source_org, r)  # the source service's id and current band are the source org's private data (API-02)
         ag = CascadeAgent(s.nodes[source_org])
         g = ag.cross_graph()
         n = s.nodes[source_org]
@@ -200,10 +268,12 @@ def create_app(system: Optional[CascadeShieldSystem] = None) -> FastAPI:
 
     @app.post("/api/approvals/{rid}/approve")
     def approve(rid: str, v: Vote, r: str = Depends(role)):
+        need_org(v.org, r)  # only that org's operators (or admin) may cast its approvers' votes
         return _vote(rid, v, True)
 
     @app.post("/api/approvals/{rid}/reject")
     def reject(rid: str, v: Vote, r: str = Depends(role)):
+        need_org(v.org, r)
         return _vote(rid, v, False)
 
     @app.post("/api/plans/{plan_id}/execute")
@@ -253,12 +323,12 @@ def create_app(system: Optional[CascadeShieldSystem] = None) -> FastAPI:
 
     @app.get("/api/audit/verify")
     def audit_verify(org: str, r: str = Depends(role)):
-        if org not in ORGS:
-            raise HTTPException(404, "unknown org")
+        need_org(org, r)
         return S().nodes[org].audit.verify()
 
     @app.get("/api/audit/proof")
     def audit_proof(org: str, trace_id: str, r: str = Depends(role)):
+        need_org(org, r)
         n = S().nodes[org]
         p = n.audit.inclusion_proof(trace_id)
         if not p:
