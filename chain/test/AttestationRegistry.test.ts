@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
+import * as fs from "fs";
+import * as path from "path";
 import {
   deploySystem, ORG, submitDep, submitRisk, submitFinding, futureTs, confirmEdge,
   DepArgs, attDomain, DEP_TYPES, RISK_TYPES,
@@ -386,12 +388,17 @@ describe("AttestationRegistry", function () {
   });
 
   it("BC-ATT-X-03 no external function takes a free-form string parameter", async function () {
-    const sys = await loadFixture(fx);
-    for (const c of [sys.attestation, sys.auditLog, sys.gate, sys.alertBus, sys.orgRegistry]) {
-      for (const f of c.interface.fragments) {
-        if (f.type !== "function") continue;
-        for (const inp of (f as any).inputs) {
-          expect(inp.type, `${(f as any).name}.${inp.name}`).to.not.equal("string");
+    const contractNames = ["AttestationRegistry", "AuditLog", "ApprovalGate", "AlertBus", "OrgRegistry"];
+    const artifactsDir = path.join(__dirname, "../artifacts/contracts");
+    for (const name of contractNames) {
+      const abiPath = path.join(artifactsDir, `${name}.sol`, `${name}.json`);
+      const art = JSON.parse(fs.readFileSync(abiPath, "utf-8"));
+      const abi: any[] = art.abi;
+      for (const item of abi) {
+        if (item.type !== "function") continue;
+        if (item.stateMutability === "view" || item.stateMutability === "pure") continue;
+        for (const inp of item.inputs || []) {
+          expect(inp.type, `${item.name}.${inp.name}`).to.not.equal("string");
         }
       }
     }

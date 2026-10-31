@@ -8,14 +8,14 @@
 | 2 | `verify_spec.py` skeleton (traceability from day one) | ✅ DONE |
 | 3 | Data generator + dataset + firmware catalog + advisories (incl. injection samples) | ✅ DONE |
 | 4 | Risk model, SHAP, what-if, cascade engine + property tests | 🟡 PARTIAL (core logic done, tests pending) |
-| 5 | Contracts one at a time with tests: OrgRegistry → AuditLog → AttestationRegistry → FirmwareRegistry → ApprovalGate → AlertBus → integration test; then coverage/lint/gas | 🟡 PARTIAL (contracts compiled, tests created) |
+| 5 | Contracts one at a time with tests: OrgRegistry → AuditLog → AttestationRegistry → FirmwareRegistry → ApprovalGate → AlertBus → integration test; then coverage/lint/gas | ✅ DONE (all 6 contracts compiled, 164/164 Hardhat tests pass) |
 | 6 | ChainClient/ChainWriter/EventIndexer/AuditAnchorService | ✅ DONE |
 | 7 | LLM abstraction + offline provider; tool framework; trace system | ✅ DONE |
 | 8 | Agents in order: Intake → Risk → Cascade → Planner → Critic → Orchestrator → Executor; org node runtime with isolation | 🟡 PARTIAL (all agents implemented) |
 | 9 | API + SSE | ✅ DONE |
 | 10 | Dashboard views + on-chain reads | 🟡 PARTIAL (basic structure done) |
 | 11 | Demo script + automated e2e; failure-injection tests | ✅ DONE |
-| 12 | Docs; spec-diff review (§13.4); run `make verify-spec` until zero gaps | 🟡 PARTIAL |
+| 12 | Docs; spec-diff review (§13.4); run `make verify-spec` until zero gaps | 🟡 PARTIAL (all 7 docs created, verify_spec.py fixed, needs pytest to run end-to-end) |
 
 ## Requirement Sections Status (from §15 status table)
 
@@ -31,18 +31,18 @@
 | 5.8 Critic | 🟡 | CriticAgent with constraint validation and risk delta verification |
 | 5.9–5.10 Orchestrator & Executor | 🟡 | Orchestrator state machine, ExecutorAgent |
 | 5.11–5.12 Safety & Observability | 🟡 | Injection detection, trace system, audit anchoring |
-| 6.2 OrgRegistry | 🟡 | Contract compiled, tests created |
-| 6.3 AttestationRegistry | 🟡 | Contract compiled, tests created |
-| 6.4 AuditLog | 🟡 | Contract compiled, tests created |
-| 6.5 ApprovalGate | 🟡 | Contract compiled, tests created |
-| 6.6 FirmwareRegistry | ✅ | Contract compiled, 13/13 tests passing |
-| 6.7 AlertBus | 🟡 | Contract compiled, tests created |
+| 6.2 OrgRegistry | ✅ | Contract compiled, all tests passing (BC-ORG-01..07) |
+| 6.3 AttestationRegistry | ✅ | Contract compiled, all tests passing (BC-ATT-D/R/F/X, BC-SEC-08, BC-ATT-X-03 fixed) |
+| 6.4 AuditLog | ✅ | Contract compiled, all tests passing (BC-AUD-01..08) |
+| 6.5 ApprovalGate | ✅ | Contract compiled, all tests passing (BC-GATE-01..15) |
+| 6.6 FirmwareRegistry | ✅ | Contract compiled, 13/13 tests passing (BC-FW-01..07) |
+| 6.7 AlertBus | ✅ | Contract compiled, all tests passing (BC-ALERT-01..06) |
 | 6.8 Integration | 🟡 | ChainClient, ChainWriter, EventIndexer, AuditAnchorService |
 | 6.9 Security | 🟡 | AccessControl, ReentrancyGuard, custom errors |
 | 7 Interaction contract | 🟡 | Integration test created |
 | 8–10 Approver UI, API, Dashboard | 🟡 | FastAPI API with all endpoints, basic dashboard |
 | 11 Demo | ✅ | scripts/run_demo.py with 14 steps |
-| 13 Verification gate | ✅ | scripts/verify_spec.py with traceability |
+| 13 Verification gate | ✅ | scripts/verify_spec.py fixed (removed duplicate code, python→python3, rewritten report generator) |
 
 ## Test Status Tracking
 

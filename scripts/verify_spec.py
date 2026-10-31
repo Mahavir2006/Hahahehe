@@ -8,6 +8,7 @@ import re
 import sys
 import subprocess
 import json
+import time
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 from dataclasses import dataclass
@@ -69,7 +70,7 @@ def run_tests_and_get_coverage():
     except Exception as e:
         results["hardhat"] = {"success": False, "output": "", "errors": str(e)}
     try:
-        result = subprocess.run(["python", "-m", "pytest", "backend/tests/", "-v", "--tb=short", "-m", "not live_llm"], cwd=".", capture_output=True, text=True, timeout=300)
+        result = subprocess.run(["python3", "-m", "pytest", "backend/tests/", "-v", "--tb=short", "-m", "not live_llm"], cwd=".", capture_output=True, text=True, timeout=300)
         results["pytest"] = {"success": result.returncode == 0, "output": result.stdout[-5000:] if result.stdout else "", "errors": result.stderr[-2000:] if result.stderr else ""}
     except Exception as e:
         results["pytest"] = {"success": False, "output": "", "errors": str(e)}
@@ -115,7 +116,7 @@ def generate_verification_report(requirements, test_ids, test_results, coverage_
         req_to_tests[req.id] = []
         for test_file, ids in test_ids.items():
             for test_id in ids:
-                if test_id == req.id or test_id.startswith(req.id.split('-')[0]):
+                if test_id == req.id or test_id.startswith(req.id.split("-")[0]):
                     req_to_tests[req.id].append(test_file)
     untested_must = [r for r in requirements if r.is_must and not req_to_tests[r.id]]
     untested_should = [r for r in requirements if not r.is_must and not req_to_tests[r.id]]
@@ -124,27 +125,60 @@ def generate_verification_report(requirements, test_ids, test_results, coverage_
         all_test_ids.update(ids)
     spec_ids = set(r.id for r in requirements)
     orphaned_tests = all_test_ids - spec_ids
-    lines = ["# VERIFICATION_REPORT.md", f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}", "", "## Summary", f"- Total requirements: {len(requirements)}", f"- MUST requirements: {len([r for r in requirements if r.is_must])}", f"- SHOULD/MAY requirements: {len([r for r in requirements if not r.is_must])}", f"- Requirements with tests: {len([r for r in requirements if req_to_tests[r.id]])}", f"- Untested MUST: {len(untested_must)}", f"- Untested SHOULD/MAY: {len(untested_should)}", f"- Orphaned test references: {len(orphaned_tests)}", "", "## Test Suite Results"]
+
+    lines = []
+    lines.append("# VERIFICATION_REPORT.md")
+    lines.append(f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append(f"- Total requirements: {len(requirements)}")
+    lines.append(f"- MUST requirements: {len([r for r in requirements if r.is_must])}")
+    lines.append(f"- SHOULD/MAY requirements: {len([r for r in requirements if not r.is_must])}")
+    lines.append(f"- Requirements with tests: {len([r for r in requirements if req_to_tests[r.id]])}")
+    lines.append(f"- Untested MUST: {len(untested_must)}")
+    lines.append(f"- Untested SHOULD/MAY: {len(untested_should)}")
+    lines.append(f"- Orphaned test references: {len(orphaned_tests)}")
+    lines.append("")
+    lines.append("## Test Suite Results")
     for suite, result in test_results.items():
-        status = "✅ PASS" if result.get("success") else "❌ FAIL"
+        status = "PASS" if result.get("success") else "FAIL"
         lines.append(f"- {suite}: {status}")
-    lines.extend(["", "## Coverage Results", f"- Solidity line coverage: {coverage_results[1].get('lines', 0):.1f}% (threshold: 95%) {'✅' if coverage_results[0] else '❌'}", f"- Solidity branch coverage: {coverage_results[1].get('branches', 0):.1f}% (threshold: 90%) {'✅' if coverage_results[0] else '❌'}", "", "## Key Metrics", f"- ML AUC: {ml_results[1].get('auc', 0):.2f} (threshold: 0.80) {'✅' if ml_results[0] else '❌'}", f"- Intake extraction accuracy: {extraction_results[1].get('accuracy', 0):.2%} (threshold: 90%) {'✅' if extraction_results[0] else '❌'}", f"- Critic catch rate: {critic_results[1].get('caught', 0)}/{critic_results[1].get('total', 0)} (threshold: 10/10) {'✅' if critic_results[0] else '❌'}", "", "## Requirement Traceability", "| Requirement ID | Type | Tests | Status |", "|----------------|------|-------|--------|"]
+    lines.append("")
+    lines.append("## Coverage Results")
+    line_cov = coverage_results[1].get("lines", 0)
+    branch_cov = coverage_results[1].get("branches", 0)
+    line_ok = coverage_results[0]
+    branch_ok = coverage_results[0]
+    lines.append(f"- Solidity line coverage: {line_cov:.1f}% (threshold: 95%) {'OK' if line_ok else 'FAIL'}")
+    lines.append(f"- Solidity branch coverage: {branch_cov:.1f}% (threshold: 90%) {'OK' if branch_ok else 'FAIL'}")
+    lines.append("")
+    lines.append("## Key Metrics")
+    lines.append(f"- ML AUC: {ml_results[1].get('auc', 0):.2f} (threshold: 0.80) {'OK' if ml_results[0] else 'FAIL'}")
+    lines.append(f"- Intake extraction accuracy: {extraction_results[1].get('accuracy', 0):.2%} (threshold: 90%) {'OK' if extraction_results[0] else 'FAIL'}")
+    lines.append(f"- Critic catch rate: {critic_results[1].get('caught', 0)}/{critic_results[1].get('total', 0)} (threshold: 10/10) {'OK' if critic_results[0] else 'FAIL'}")
+    lines.append("")
+    lines.append("## Requirement Traceability")
+    lines.append("| Requirement ID | Type | Tests | Status |")
+    lines.append("|----------------|------|-------|--------|")
     for req in sorted(requirements, key=lambda r: r.id):
         req_type = "MUST" if req.is_must else "SHOULD/MAY"
         tests = req_to_tests.get(req.id, [])
         test_str = ", ".join(tests) if tests else "NONE"
-        status = "✅" if tests or not req.is_must else "❌ UNTESTED"
+        status = "OK" if tests or not req.is_must else "UNTESTED"
         lines.append(f"| {req.id} | {req_type} | {test_str} | {status} |")
     if untested_must:
-        lines.extend(["", "## ❌ UNTESTED MUST REQUIREMENTS"])
+        lines.append("")
+        lines.append("## UNTESTED MUST REQUIREMENTS")
         for req in untested_must:
             lines.append(f"- {req.id} (line {req.line})")
     if untested_should:
-        lines.extend(["", "## ⚠️ UNTESTED SHOULD/MAY REQUIREMENTS"])
+        lines.append("")
+        lines.append("## UNTESTED SHOULD/MAY REQUIREMENTS")
         for req in untested_should:
             lines.append(f"- {req.id} (line {req.line})")
     if orphaned_tests:
-        lines.extend(["", "## ⚠️ ORPHANED TEST REFERENCES (not in spec)"])
+        lines.append("")
+        lines.append("## ORPHANED TEST REFERENCES (not in spec)")
         for tid in sorted(orphaned_tests):
             lines.append(f"- {tid}")
     return "\n".join(lines)
@@ -194,50 +228,4 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    import time
-    import re
-    from typing import List, Dict, Set, Tuple
-    from dataclasses import dataclass
-    @dataclass
-    class Requirement:
-        id: str
-        line: int
-        text: str
-        is_must: bool
-    def parse_spec(spec_path: Path) -> List[Requirement]:
-        requirements = []
-        with open(spec_path) as f:
-            lines = f.readlines()
-        req_pattern = re.compile(r'^\s*-\s*\*\*([A-Z]+(?:-[A-Z0-9]+)+)\*\*')
-        for i, line in enumerate(lines):
-            match = req_pattern.match(line)
-            if match:
-                req_id = match.group(1)
-                is_should = "SHOULD" in line.upper()
-                is_may = "MAY" in line.upper()
-                is_must = not (is_should or is_may)
-                requirements.append(Requirement(id=req_id, line=i+1, text=line.strip(), is_must=is_must))
-        return requirements
-    def extract_test_ids(test_dir: Path) -> Dict[str, List[str]]:
-        test_ids = {}
-        patterns = [re.compile(r'(?:test_|@pytest\.mark\.req\(["\'])([A-Z]+(?:-[A-Z0-9]+)+)'), re.compile(r'it\(["\'].*?([A-Z]+(?:-[A-Z0-9]+)+)'), re.compile(r'describe\(["\'].*?([A-Z]+(?:-[A-Z0-9]+)+)')]
-        for test_file in test_dir.rglob("*.py"):
-            with open(test_file) as f:
-                content = f.read()
-            found = set()
-            for pattern in patterns:
-                for match in pattern.finditer(content):
-                    found.add(match.group(1))
-            if found:
-                test_ids[str(test_file.relative_to(test_dir.parent))] = list(found)
-        for test_file in test_dir.rglob("*.ts"):
-            with open(test_file) as f:
-                content = f.read()
-            found = set()
-            for pattern in patterns:
-                for match in pattern.finditer(content):
-                    found.add(match.group(1))
-            if found:
-                test_ids[str(test_file.relative_to(test_dir.parent))] = list(found)
-        return test_ids
     main()
