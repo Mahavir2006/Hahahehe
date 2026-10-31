@@ -1,5 +1,5 @@
 {
-  "description": "Assess cyber risks across critical infrastructure with geospatial asset monitoring, cascade analysis, AI-guided remediation, and approval workflows for security teams.",
+  "title": "CascadeShield — Cyber-Risk Prediction", "description": "AI-based cyber-risk prediction and prioritisation for critical infrastructure (PS-03): risk scores, cascade analysis and preventive recommendations.",
   "robots": {
     "index": false
   },
