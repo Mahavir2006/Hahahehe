@@ -99,12 +99,18 @@ def search(train: pd.DataFrame) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
 
 
 def _shap_supported(cfg, train) -> bool:
+    """SHAP counts as supported only if its values add up to the model's log-odds (not merely if it runs)."""
     try:
         import shap
 
-        m = fit(cfg, train[FEATURES].head(800), train["label"].head(800))
-        shap.TreeExplainer(m).shap_values(train[FEATURES].head(3))
-        return True
+        m = fit(cfg, train[FEATURES].head(2000), train["label"].head(2000))
+        X = train[FEATURES].iloc[2000:2200]
+        ex = shap.TreeExplainer(m)
+        sv = np.asarray(ex.shap_values(X))
+        sv = sv if sv.ndim == 2 else sv[:, :, 1]
+        p = m.predict_proba(X)[:, 1]
+        err = np.abs(float(np.asarray(ex.expected_value).reshape(-1)[-1]) + sv.sum(1) - np.log(p / (1 - p)))
+        return bool(err.max() < 1e-3)
     except Exception:  # noqa: BLE001
         return False
 

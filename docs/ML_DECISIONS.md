@@ -57,3 +57,14 @@ output by a rule fixed here **before** any value is computed or any demo test is
 - Script: `evaluation/band_thresholds.py`, which writes the values into `metrics.json` (`band_thresholds`) and the
   defaults in `backend/common/config.py`.
 - Whatever the demo then shows is reported as-is; the thresholds are not adjusted afterwards.
+
+## 4. Fixes found by rigorous testing (retrain under the unchanged rules)
+
+`evaluation/rigorous.py` found two bugs in the first shipped model. Both are fixed and the whole pipeline is re-run
+with the same search grid, the same model-choice rule and the same band-threshold rule (section 3 says thresholds
+must be re-derived whenever M1 is retrained):
+
+| Bug | Evidence | Fix |
+|---|---|---|
+| SHAP values did not add up | On 300 held-out rows, 285 explanations missed the model's log-odds by more than 0.01, up to 0.74; the error tracked asset type. shap's TreeExplainer does not reproduce HistGradientBoosting's native categorical splits. The "SHAP supported" check only tested that SHAP ran. | Asset type is passed as an ordinal code (no native categorical feature). "SHAP supported" now means additivity error below 1e-3 on 200 rows. A batch additivity test was added. |
+| `num_dependents` meant different things in training and live scoring | Training uses direct dependents (median 2); demo assets passed transitive dependents (median 16, clipped at 20); PSI 3.57 | The model feature uses direct dependents (`AssetCtx.direct_dependents`); the impact formula keeps the transitive count. |

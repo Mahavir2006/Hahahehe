@@ -1,6 +1,6 @@
 {
-  "model_version": "e48d996a3f100d81",
-  "artifact_sha256": "938262723016c95b0162c75013be2d315e661418e17202257f5591082333d7b9",
+  "model_version": "79919736af73714c",
+  "artifact_sha256": "fc598ccace582f302c2a126d461ecfc3aa8a6740019b1ab0cd61e286a47d4ef5",
   "features": [
     "asset_type_code",
     "zone_ord",
@@ -30,12 +30,12 @@
   "config": {
     "estimator": "hgb_monotonic",
     "max_iter": 200,
-    "learning_rate": 0.1,
+    "learning_rate": 0.05,
     "max_depth": 3,
-    "l2_regularization": 0.0,
+    "l2_regularization": 1.0,
     "choice": {
       "gbc_best_cv_pr_auc": 0.502269,
-      "hgb_monotonic_best_cv_pr_auc": 0.49726,
+      "hgb_monotonic_best_cv_pr_auc": 0.502665,
       "shap_supports_hgb": true,
       "chosen": "hgb_monotonic",
       "rule": "use hgb_monotonic if its CV PR-AUC >= gbc CV PR-AUC - 0.01 and SHAP supports it"
@@ -46,7 +46,7 @@
     "positives_in_calibration_split": 276
   },
   "operating_threshold": {
-    "value": 0.11,
+    "value": 0.12,
     "rule": "maximise F2 on the validation split"
   },
   "training_data": {
@@ -141,7 +141,7 @@
         "max_depth": 3,
         "l2_regularization": 0.0
       },
-      "cv_pr_auc": 0.496877
+      "cv_pr_auc": 0.502586
     },
     {
       "config": {
@@ -151,7 +151,7 @@
         "max_depth": 3,
         "l2_regularization": 1.0
       },
-      "cv_pr_auc": 0.496891
+      "cv_pr_auc": 0.502665
     },
     {
       "config": {
@@ -161,7 +161,7 @@
         "max_depth": 3,
         "l2_regularization": 0.0
       },
-      "cv_pr_auc": 0.49726
+      "cv_pr_auc": 0.502019
     },
     {
       "config": {
@@ -171,7 +171,7 @@
         "max_depth": 3,
         "l2_regularization": 1.0
       },
-      "cv_pr_auc": 0.495638
+      "cv_pr_auc": 0.502343
     },
     {
       "config": {
@@ -181,7 +181,7 @@
         "max_depth": 3,
         "l2_regularization": 0.0
       },
-      "cv_pr_auc": 0.496877
+      "cv_pr_auc": 0.502586
     },
     {
       "config": {
@@ -191,7 +191,7 @@
         "max_depth": 3,
         "l2_regularization": 1.0
       },
-      "cv_pr_auc": 0.496891
+      "cv_pr_auc": 0.502665
     },
     {
       "config": {
@@ -201,7 +201,7 @@
         "max_depth": 3,
         "l2_regularization": 0.0
       },
-      "cv_pr_auc": 0.49726
+      "cv_pr_auc": 0.502019
     },
     {
       "config": {
@@ -211,7 +211,7 @@
         "max_depth": 3,
         "l2_regularization": 1.0
       },
-      "cv_pr_auc": 0.495638
+      "cv_pr_auc": 0.502343
     }
   ]
 }

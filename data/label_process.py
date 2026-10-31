@@ -90,6 +90,26 @@ def _intercept(z: np.ndarray, target: float) -> float:
     return (lo + hi) / 2
 
 
+class _NoNoise:
+    @staticmethod
+    def normal(loc, scale, size):
+        return np.zeros(size)
+
+
+def latent(rows: List[Dict[str, Any]], generator: str, seed: int) -> Dict[str, np.ndarray]:
+    """For the accuracy-ceiling analysis only (data/oracle_ceiling.py): reproduce make_labels' random draws up to the
+    compromise probability. Returns the true probability (observed features + hidden factors + noise) and the part of
+    the logit that depends on observed features alone. Does not change how labels are made."""
+    spec = SPEC[generator]
+    rng = np.random.default_rng(seed)
+    c = _cols(rows)
+    h = _hidden(rows, rng, spec["hidden"])
+    z = spec["logit"](c, h, rng)
+    zero = {k: np.zeros(len(rows)) for k in h}
+    z_obs = spec["logit"](c, zero, _NoNoise())
+    return {"p_true": _sigmoid(z + _intercept(z, spec["base_rate"])), "logit_observable": z_obs}
+
+
 def make_labels(rows: List[Dict[str, Any]], generator: str, seed: int) -> Tuple[np.ndarray, List[Dict[str, Any]]]:
     """Return (label per row, scheduled attack-precursor episodes). Episodes are evaluation-only ground truth for D."""
     spec = SPEC[generator]

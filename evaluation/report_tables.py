@@ -78,3 +78,39 @@ if bt:
     print(f"| medium / high | {bt['previous']['medium_max']} | {bt['risk_band_medium_max']} |")
     print(f"| high / critical | {bt['previous']['high_max']} | {bt['risk_band_high_max']} |")
     print(f"\nComputed over {bt['rows']} held-out rows; risk range {bt['risk_min']} to {bt['risk_max']}.")
+
+rg = m.get("rigorous")
+if rg:
+    print(f"\n## Rigorous testing (`evaluation/rigorous.py`, model {rg['model_version']})\n")
+    print("### Classification metrics at the operating threshold, with grouped-bootstrap 95% intervals\n")
+    print("| Evaluation | Threshold | Accuracy | Always-negative accuracy | Balanced acc. | Precision | Recall | F1 | Specificity | MCC | TP / FP / FN / TN | ROC-AUC 95% CI | PR-AUC 95% CI | F1 95% CI |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    for k, v in rg["classification"].items():
+        o, c, ci = v["at_operating_threshold"], v["at_operating_threshold"]["confusion"], v["bootstrap_95ci"]
+        print(f"| {k} | {o['threshold']} | {o['accuracy']} | {o['accuracy_of_always_negative']} | {o['balanced_accuracy']} | {o['precision']} | {o['recall']} | {o['f1']} | {o['specificity']} | {o['mcc']} | "
+              f"{c['tp']} / {c['fp']} / {c['fn']} / {c['tn']} | {ci['roc_auc']['ci95']} | {ci['pr_auc']['ci95']} | {ci['f1']['ci95']} |")
+    print("\n### Threshold sweep (grouped test split of A)\n\n| Threshold | Accuracy | Precision | Recall | F1 | Specificity |\n|---|---|---|---|---|---|")
+    for x in rg["threshold_sweep_A_grouped"]:
+        print(f"| {x['threshold']} | {x['accuracy']} | {x['precision']} | {x['recall']} | {x['f1']} | {x['specificity']} |")
+    print("\n### Drift (PSI against the training split; < 0.1 stable, 0.1-0.25 moderate, >= 0.25 significant)\n")
+    print("| Comparison | Rows | Prediction PSI | Verdict | Features with significant PSI | Features with moderate PSI |\n|---|---|---|---|---|---|")
+    for k, v in rg["drift"].items():
+        if k != "note":
+            print(f"| {k} | {v['rows']} | {v['prediction_psi']} | {v['prediction_drift']} | {', '.join(v['features_significant_psi']) or 'none'} | {', '.join(v['features_moderate_psi']) or 'none'} |")
+    print("\n### Performance by segment (grouped test split of A)\n\n| Segment | Value | n | Positive rate | ROC-AUC | Recall |\n|---|---|---|---|---|---|")
+    for seg, vals in rg["segments_A_grouped"].items():
+        for val, r in vals.items():
+            print(f"| {seg} | {val} | {r['n']} | {r['positive_rate']} | {r.get('roc_auc', r.get('note'))} | {r.get('recall', '')} |")
+    ss = rg["seed_stability"]
+    print(f"\nSeed stability (5 different split and model seeds): ROC-AUC {ss['roc_auc_mean']} ± {ss['roc_auc_std']}, PR-AUC {ss['pr_auc_mean']} ± {ss['pr_auc_std']}.")
+    print("\nRobustness (ROC-AUC, grouped test split): " + ", ".join(f"{k} {v}" for k, v in rg["robustness_roc_auc"].items()) + ".")
+    sh = rg["shap"]
+    print(f"\nSHAP: additivity max error {sh['additivity_max_abs_error_logodds']} log-odds over 300 rows; higher value of a monotone feature gives higher SHAP: "
+          + ", ".join(f"{k} {v}" for k, v in sh["monotone_features_higher_value_higher_shap"].items()) + ".")
+    i = rg["inference"]
+    print(f"\nInference: {i['fuzz_cases']} fuzzed records (NaN, inf, strings, missing keys, out of range): {i['crashes']} crashes, {i['likelihood_out_of_range']} out-of-range outputs, "
+          f"{i['non_integer_outputs']} non-integer outputs. Latency with SHAP: p50 {i['latency_ms_single_with_shap_p50']} ms, p95 {i['latency_ms_single_with_shap_p95']} ms; "
+          f"batch of {i['batch_rows']} rows in {i['batch_ms']} ms.")
+    w, rp = rg["what_if_properties"], rg["reproducibility"]
+    print(f"\nWhat-if on every demo asset x every mitigating action: {w['asset_action_pairs']} pairs, risk increased in {w['risk_increased']}, inputs unchanged {w['inputs_unchanged']}. "
+          f"Reproducibility over {rp['assets']} demo assets: identical risk_bp after reloading the model {rp['identical_risk_bp_after_reload']}, all basis points integers {rp['all_bp_are_int']}.")

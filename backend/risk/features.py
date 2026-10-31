@@ -14,11 +14,11 @@ from data.ml_population import ASSET_TYPE_CODE, ZONE_ORD  # noqa: F401  (re-expo
 
 # name: (dtype, min, max, group, source, real_or_simulated, description)
 SCHEMA: Dict[str, tuple] = {
-    "asset_type_code": ("categorical", 0, len(ASSET_TYPE_CODE) - 1, "asset", "inventory", "simulated", "asset type, with an explicit 'unknown' level"),
+    "asset_type_code": ("categorical", 0, len(ASSET_TYPE_CODE) - 1, "asset", "inventory", "simulated", "asset type code (ordinal; explicit 'unknown' level)"),
     "zone_ord": ("int", 0, 3, "asset", "inventory", "simulated", "IT=0, DMZ=1, OT=2, SAFETY=3"),
     "criticality": ("int", 1, 5, "asset", "inventory", "simulated", "operator-assigned criticality"),
     "safety_critical": ("binary", 0, 1, "asset", "inventory", "simulated", "safety-instrumented asset"),
-    "num_dependents": ("int", 0, 20, "asset", "dependency graph", "simulated", "assets that depend on this one"),
+    "num_dependents": ("int", 0, 20, "asset", "dependency graph", "simulated", "assets that DIRECTLY depend on this one"),
     "supply_chain_flag": ("binary", 0, 1, "asset", "FirmwareRegistry check", "simulated", "firmware mismatch, unknown or revoked"),
     "internet_exposed": ("binary", 0, 1, "asset", "inventory", "simulated", "reachable from the internet"),
     "default_credentials": ("binary", 0, 1, "asset", "inventory", "simulated", "vendor default credentials in use"),
@@ -40,7 +40,9 @@ SCHEMA: Dict[str, tuple] = {
     "high_severity_rule_hit": ("binary", 0, 1, "telemetry", "detection rules D", "simulated telemetry", "a high-severity rule fired"),
 }
 FEATURES: List[str] = list(SCHEMA)
-CATEGORICAL = ["asset_type_code"]
+# Asset type is passed to the trees as an ordinal code, not as a native categorical feature: shap's TreeExplainer
+# does not reproduce HistGradientBoosting's categorical splits, so SHAP values would not add up (found in testing).
+CATEGORICAL: List[str] = []
 # a higher value of these must never lower predicted likelihood (enforced by the monotonic variant, checked by tests)
 MONOTONE_INCREASING = ["internet_exposed", "default_credentials", "any_known_exploited", "days_since_patch", "max_cvss",
                        "max_epss", "supply_chain_flag", "open_mgmt_ports"]

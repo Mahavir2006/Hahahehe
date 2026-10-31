@@ -87,6 +87,24 @@ def test_top_factors_are_shap_log_odds_not_risk_points():
 
 
 @pytest.mark.req("RISK-03")
+def test_shap_adds_up_on_a_batch_of_held_out_rows():
+    m = I.M1.get()
+    X = T.split(T.load("a"))["test"][FEATURES].sample(300, random_state=5)
+    sv = np.asarray(m.explainer.shap_values(X))
+    sv = sv if sv.ndim == 2 else sv[:, :, 1]
+    p = m.base.predict_proba(X)[:, 1]
+    base = float(np.asarray(m.explainer.expected_value).reshape(-1)[-1])
+    assert np.abs(base + sv.sum(1) - np.log(p / (1 - p))).max() < 1e-4
+
+
+@pytest.mark.req("RISK-02")
+def test_demo_feature_uses_direct_dependents_like_training():
+    a = ctx(num_dependents=16, direct_dependents=2)
+    assert M.features_of(a)["num_dependents"] == 2
+    assert M.impact_of(a) == M.impact_of(ctx(num_dependents=16)), "impact keeps the transitive count"
+
+
+@pytest.mark.req("RISK-03")
 def test_what_changed_names_the_feature_that_moved():
     a, b = M.features_of(ctx()), M.features_of(ctx(default_credentials=True))
     ch = I.what_changed(a, b)

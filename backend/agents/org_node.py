@@ -181,6 +181,7 @@ class OrgNodeRuntime:
         from backend.risk import rules
 
         out = {}
+        direct = self.graph.dependents()
         for aid, a in self.inventory.items():
             ports = set(a.get("open_ports", []))
             remote = a.get("type") == "jump host" or bool(ports & {22, 3389, 5900})
@@ -192,7 +193,7 @@ class OrgNodeRuntime:
                 zone=a["zone"], last_patched=a["last_patched"], criticality=a["criticality"], safety_critical=a["safety_critical"],
                 num_dependents=len(self.graph.transitive_dependents(aid)), service_crit=svc_crit.get(aid, "low"),
                 asset_type=a.get("type", "unknown"), open_mgmt_ports=len(ports & MGMT_PORTS), remote_access_enabled=remote,
-                firmware_known=a.get("firmware_state") != "unknown",
+                firmware_known=a.get("firmware_state") != "unknown", direct_dependents=len(direct.get(aid, [])),
                 telemetry={k: int(tel[k]) for k in rules.TELEMETRY_FEATURES},
             )
         return out

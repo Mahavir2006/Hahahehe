@@ -79,7 +79,7 @@ class AssetCtx:
     last_patched: str = "2026-01-01"
     criticality: int = 3
     safety_critical: bool = False
-    num_dependents: int = 0
+    num_dependents: int = 0            # transitive dependents: used by the impact formula
     service_crit: str = "low"
     vulns: List[Dict[str, Any]] = field(default_factory=list)  # {cve, cvss|None, epss|None, exploited, published?}
     supply_chain_flag: bool = False
@@ -90,6 +90,7 @@ class AssetCtx:
     remote_access_enabled: bool = False
     firmware_known: bool = True
     telemetry: Dict[str, float] = field(default_factory=dict)   # aggregated rule-D features (30 days before t)
+    direct_dependents: Optional[int] = None  # direct dependents: the M1 feature (as in training); None -> num_dependents
 
 
 def days_since(last_patched: str) -> int:
@@ -107,7 +108,8 @@ def features_of(a: AssetCtx) -> Dict[str, Any]:
     return {
         "asset_type_code": ASSET_TYPE_CODE.get(a.asset_type, ASSET_TYPE_CODE["unknown"]),
         "zone_ord": ZONE_ORD.get(a.zone, 0), "criticality": a.criticality, "safety_critical": int(a.safety_critical),
-        "num_dependents": a.num_dependents, "supply_chain_flag": int(a.supply_chain_flag), "internet_exposed": int(a.internet_exposed),
+        "num_dependents": a.direct_dependents if a.direct_dependents is not None else a.num_dependents,
+        "supply_chain_flag": int(a.supply_chain_flag), "internet_exposed": int(a.internet_exposed),
         "default_credentials": int(a.default_credentials), "open_mgmt_ports": a.open_mgmt_ports,
         "remote_access_enabled": int(a.remote_access_enabled), "firmware_known": int(a.firmware_known),
         "days_since_patch": days_since(a.last_patched), "has_vulnerability": has, "cve_count": len(vulns),
