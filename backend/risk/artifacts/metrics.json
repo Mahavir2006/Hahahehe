@@ -1,0 +1,585 @@
+{
+  "model_version": "e48d996a3f100d81",
+  "config": {
+    "estimator": "hgb_monotonic",
+    "max_iter": 200,
+    "learning_rate": 0.1,
+    "max_depth": 3,
+    "l2_regularization": 0.0,
+    "choice": {
+      "gbc_best_cv_pr_auc": 0.502269,
+      "hgb_monotonic_best_cv_pr_auc": 0.49726,
+      "shap_supports_hgb": true,
+      "chosen": "hgb_monotonic",
+      "rule": "use hgb_monotonic if its CV PR-AUC >= gbc CV PR-AUC - 0.01 and SHAP supports it"
+    }
+  },
+  "labels": "synthetic; simulated data",
+  "evaluations": {
+    "A_grouped": {
+      "M1": {
+        "n": 3200,
+        "positives": 565,
+        "roc_auc": 0.7347,
+        "pr_auc": 0.5356,
+        "positive_rate": 0.1766,
+        "brier": 0.1137,
+        "ece": 0.0255,
+        "threshold": 0.11,
+        "precision_at_threshold": 0.2232,
+        "recall_at_threshold": 0.8018,
+        "top5_precision": 0.425,
+        "top10_precision": 0.2953
+      },
+      "B1_cvss_only": {
+        "n": 3200,
+        "positives": 565,
+        "roc_auc": 0.5989,
+        "pr_auc": 0.249,
+        "positive_rate": 0.1766,
+        "brier": "not applicable (score, not probability)",
+        "ece": "not applicable (score, not probability)",
+        "threshold": 3.7,
+        "precision_at_threshold": 0.3152,
+        "recall_at_threshold": 0.3381,
+        "top5_precision": 0.3016,
+        "top10_precision": 0.2203
+      },
+      "B2_known_exploited": {
+        "n": 3200,
+        "positives": 565,
+        "roc_auc": 0.5042,
+        "pr_auc": 0.1824,
+        "positive_rate": 0.1766,
+        "brier": "not applicable (score, not probability)",
+        "ece": "not applicable (score, not probability)",
+        "threshold": 1.0,
+        "precision_at_threshold": 0.8333,
+        "recall_at_threshold": 0.0088,
+        "top5_precision": 0.1656,
+        "top10_precision": 0.1617
+      },
+      "B3_logistic": {
+        "n": 3200,
+        "positives": 565,
+        "roc_auc": 0.7455,
+        "pr_auc": 0.5475,
+        "positive_rate": 0.1766,
+        "brier": 0.1122,
+        "ece": 0.0216,
+        "threshold": 0.11,
+        "precision_at_threshold": 0.2632,
+        "recall_at_threshold": 0.7575,
+        "top5_precision": 0.4469,
+        "top10_precision": 0.3
+      }
+    },
+    "A_time": {
+      "M1": {
+        "n": 800,
+        "positives": 158,
+        "roc_auc": 0.7317,
+        "pr_auc": 0.6023,
+        "positive_rate": 0.1975,
+        "brier": 0.1171,
+        "ece": 0.0403,
+        "threshold": 0.11,
+        "precision_at_threshold": 0.249,
+        "recall_at_threshold": 0.7848,
+        "top5_precision": 0.5375,
+        "top10_precision": 0.3313
+      },
+      "B1_cvss_only": {
+        "n": 800,
+        "positives": 158,
+        "roc_auc": 0.612,
+        "pr_auc": 0.29,
+        "positive_rate": 0.1975,
+        "brier": "not applicable (score, not probability)",
+        "ece": "not applicable (score, not probability)",
+        "threshold": 3.7,
+        "precision_at_threshold": 0.3537,
+        "recall_at_threshold": 0.3671,
+        "top5_precision": 0.3688,
+        "top10_precision": 0.275
+      },
+      "B2_known_exploited": {
+        "n": 800,
+        "positives": 158,
+        "roc_auc": 0.5024,
+        "pr_auc": 0.1994,
+        "positive_rate": 0.1975,
+        "brier": "not applicable (score, not probability)",
+        "ece": "not applicable (score, not probability)",
+        "threshold": 1.0,
+        "precision_at_threshold": 0.5,
+        "recall_at_threshold": 0.0063,
+        "top5_precision": 0.2438,
+        "top10_precision": 0.2437
+      },
+      "B3_logistic": {
+        "n": 800,
+        "positives": 158,
+        "roc_auc": 0.7527,
+        "pr_auc": 0.6102,
+        "positive_rate": 0.1975,
+        "brier": 0.115,
+        "ece": 0.0358,
+        "threshold": 0.11,
+        "precision_at_threshold": 0.2861,
+        "recall_at_threshold": 0.7532,
+        "top5_precision": 0.5125,
+        "top10_precision": 0.3438
+      }
+    },
+    "B_all": {
+      "M1": {
+        "n": 6400,
+        "positives": 1089,
+        "roc_auc": 0.6651,
+        "pr_auc": 0.3937,
+        "positive_rate": 0.1702,
+        "brier": 0.126,
+        "ece": 0.0159,
+        "threshold": 0.11,
+        "precision_at_threshold": 0.2068,
+        "recall_at_threshold": 0.7658,
+        "top5_precision": 0.3336,
+        "top10_precision": 0.2527
+      },
+      "B1_cvss_only": {
+        "n": 6400,
+        "positives": 1089,
+        "roc_auc": 0.5867,
+        "pr_auc": 0.2204,
+        "positive_rate": 0.1702,
+        "brier": "not applicable (score, not probability)",
+        "ece": "not applicable (score, not probability)",
+        "threshold": 3.7,
+        "precision_at_threshold": 0.2973,
+        "recall_at_threshold": 0.3232,
+        "top5_precision": 0.2617,
+        "top10_precision": 0.218
+      },
+      "B2_known_exploited": {
+        "n": 6400,
+        "positives": 1089,
+        "roc_auc": 0.5047,
+        "pr_auc": 0.1746,
+        "positive_rate": 0.1702,
+        "brier": "not applicable (score, not probability)",
+        "ece": "not applicable (score, not probability)",
+        "threshold": 1.0,
+        "precision_at_threshold": 0.5714,
+        "recall_at_threshold": 0.011,
+        "top5_precision": 0.1891,
+        "top10_precision": 0.1742
+      },
+      "B3_logistic": {
+        "n": 6400,
+        "positives": 1089,
+        "roc_auc": 0.6632,
+        "pr_auc": 0.3939,
+        "positive_rate": 0.1702,
+        "brier": 0.127,
+        "ece": 0.0327,
+        "threshold": 0.11,
+        "precision_at_threshold": 0.2375,
+        "recall_at_threshold": 0.6758,
+        "top5_precision": 0.3406,
+        "top10_precision": 0.2512
+      }
+    }
+  },
+  "baselines": {
+    "B1": "rank by max CVSS (threshold by F2 on validation)",
+    "B2": "known-exploited flag (CISA KEV), threshold 1",
+    "B3": {
+      "model": "standard-scaled L2 logistic regression",
+      "C": 0.1,
+      "cv_pr_auc": 0.512103,
+      "regularisation": "L2",
+      "threshold": 0.11
+    }
+  },
+  "two_generator_drop": {
+    "roc_auc_A": 0.7347,
+    "roc_auc_B": 0.6651,
+    "roc_auc_drop": 0.0696,
+    "pr_auc_A": 0.5356,
+    "pr_auc_B": 0.3937,
+    "note": "AUC on generator A mostly measures how well M1 recovers generator A, not security skill"
+  },
+  "calibration": {
+    "method": "sigmoid",
+    "brier_before": 0.1133,
+    "brier_after": 0.1137,
+    "ece_before": 0.019,
+    "ece_after": 0.0255,
+    "reliability_before": [
+      {
+        "bin": "0.0-0.1",
+        "n": 1255,
+        "mean_predicted": 0.0808,
+        "observed_rate": 0.094
+      },
+      {
+        "bin": "0.1-0.2",
+        "n": 1313,
+        "mean_predicted": 0.1355,
+        "observed_rate": 0.1196
+      },
+      {
+        "bin": "0.2-0.3",
+        "n": 274,
+        "mean_predicted": 0.2431,
+        "observed_rate": 0.2299
+      },
+      {
+        "bin": "0.3-0.4",
+        "n": 95,
+        "mean_predicted": 0.3503,
+        "observed_rate": 0.4105
+      },
+      {
+        "bin": "0.4-0.5",
+        "n": 70,
+        "mean_predicted": 0.4417,
+        "observed_rate": 0.4857
+      },
+      {
+        "bin": "0.5-0.6",
+        "n": 48,
+        "mean_predicted": 0.5523,
+        "observed_rate": 0.5625
+      },
+      {
+        "bin": "0.6-0.7",
+        "n": 35,
+        "mean_predicted": 0.6434,
+        "observed_rate": 0.7429
+      },
+      {
+        "bin": "0.7-0.8",
+        "n": 26,
+        "mean_predicted": 0.7416,
+        "observed_rate": 0.7692
+      },
+      {
+        "bin": "0.8-0.9",
+        "n": 50,
+        "mean_predicted": 0.8568,
+        "observed_rate": 0.96
+      },
+      {
+        "bin": "0.9-1.0",
+        "n": 34,
+        "mean_predicted": 0.9362,
+        "observed_rate": 0.9706
+      }
+    ],
+    "reliability_after": [
+      {
+        "bin": "0.0-0.1",
+        "n": 919,
+        "mean_predicted": 0.0884,
+        "observed_rate": 0.0947
+      },
+      {
+        "bin": "0.1-0.2",
+        "n": 1596,
+        "mean_predicted": 0.1376,
+        "observed_rate": 0.1115
+      },
+      {
+        "bin": "0.2-0.3",
+        "n": 315,
+        "mean_predicted": 0.2422,
+        "observed_rate": 0.2159
+      },
+      {
+        "bin": "0.3-0.4",
+        "n": 111,
+        "mean_predicted": 0.3474,
+        "observed_rate": 0.4234
+      },
+      {
+        "bin": "0.4-0.5",
+        "n": 69,
+        "mean_predicted": 0.4392,
+        "observed_rate": 0.4783
+      },
+      {
+        "bin": "0.5-0.6",
+        "n": 54,
+        "mean_predicted": 0.5473,
+        "observed_rate": 0.6111
+      },
+      {
+        "bin": "0.6-0.7",
+        "n": 35,
+        "mean_predicted": 0.6446,
+        "observed_rate": 0.7143
+      },
+      {
+        "bin": "0.7-0.8",
+        "n": 26,
+        "mean_predicted": 0.7478,
+        "observed_rate": 0.8462
+      },
+      {
+        "bin": "0.8-0.9",
+        "n": 47,
+        "mean_predicted": 0.847,
+        "observed_rate": 0.9362
+      },
+      {
+        "bin": "0.9-1.0",
+        "n": 28,
+        "mean_predicted": 0.9242,
+        "observed_rate": 1.0
+      }
+    ]
+  },
+  "ablations": {
+    "full_model_uncalibrated": {
+      "pr_auc": 0.5356,
+      "roc_auc": 0.7347
+    },
+    "has_vulnerability": {
+      "dropped": [
+        "has_vulnerability"
+      ],
+      "pr_auc": 0.5356,
+      "roc_auc": 0.7347,
+      "pr_auc_change": 0.0,
+      "roc_auc_change": 0.0
+    },
+    "supply_chain_flag": {
+      "dropped": [
+        "supply_chain_flag"
+      ],
+      "pr_auc": 0.5352,
+      "roc_auc": 0.7345,
+      "pr_auc_change": -0.0004,
+      "roc_auc_change": -0.0002
+    },
+    "telemetry": {
+      "dropped": [
+        "failed_auth_count",
+        "new_remote_session_flag",
+        "rule_hit_count",
+        "high_severity_rule_hit"
+      ],
+      "pr_auc": 0.3516,
+      "roc_auc": 0.6584,
+      "pr_auc_change": -0.184,
+      "roc_auc_change": -0.0763
+    }
+  },
+  "label_noise": {
+    "extra_flip_rate": 0.1,
+    "roc_auc_clean": 0.7347,
+    "roc_auc_noisy": 0.7292,
+    "roc_auc_change": -0.0055
+  },
+  "monotonicity": {
+    "internet_exposed": {
+      "violations": 0,
+      "points_checked": 300
+    },
+    "default_credentials": {
+      "violations": 0,
+      "points_checked": 300
+    },
+    "any_known_exploited": {
+      "violations": 0,
+      "points_checked": 300
+    },
+    "days_since_patch": {
+      "violations": 0,
+      "points_checked": 3000
+    },
+    "max_cvss": {
+      "violations": 0,
+      "points_checked": 3000
+    },
+    "max_epss": {
+      "violations": 0,
+      "points_checked": 3000
+    },
+    "supply_chain_flag": {
+      "violations": 0,
+      "points_checked": 300
+    },
+    "open_mgmt_ports": {
+      "violations": 0,
+      "points_checked": 3000
+    }
+  },
+  "determinism": {
+    "same_model_version": true,
+    "same_artifact_sha256": true,
+    "identical_predictions": true,
+    "model_version": "e48d996a3f100d81"
+  },
+  "detection_rules_D": {
+    "A": {
+      "D1": {
+        "targets": "auth_bruteforce",
+        "windows": 16000,
+        "attack_windows": 262,
+        "fired_windows": 565,
+        "true_positives": 257,
+        "false_positives": 308,
+        "false_negatives": 5,
+        "precision": 0.4549,
+        "recall": 0.9809,
+        "false_positives_from_benign_anomalies": 308
+      },
+      "D2": {
+        "targets": "unexpected_remote",
+        "windows": 16000,
+        "attack_windows": 279,
+        "fired_windows": 905,
+        "true_positives": 267,
+        "false_positives": 638,
+        "false_negatives": 12,
+        "precision": 0.295,
+        "recall": 0.957,
+        "false_positives_from_benign_anomalies": 638
+      },
+      "D3": {
+        "targets": "lateral_movement",
+        "windows": 16000,
+        "attack_windows": 224,
+        "fired_windows": 208,
+        "true_positives": 206,
+        "false_positives": 2,
+        "false_negatives": 18,
+        "precision": 0.9904,
+        "recall": 0.9196,
+        "false_positives_from_benign_anomalies": 1
+      },
+      "D4": {
+        "targets": "abnormal_ot",
+        "windows": 16000,
+        "attack_windows": 150,
+        "fired_windows": 146,
+        "true_positives": 146,
+        "false_positives": 0,
+        "false_negatives": 4,
+        "precision": 1.0,
+        "recall": 0.9733,
+        "false_positives_from_benign_anomalies": 0
+      },
+      "D5": {
+        "targets": "unexpected_config",
+        "windows": 16000,
+        "attack_windows": 213,
+        "fired_windows": 523,
+        "true_positives": 211,
+        "false_positives": 312,
+        "false_negatives": 2,
+        "precision": 0.4034,
+        "recall": 0.9906,
+        "false_positives_from_benign_anomalies": 312
+      },
+      "D6": {
+        "targets": "exploit_indicator",
+        "windows": 16000,
+        "attack_windows": 154,
+        "fired_windows": 209,
+        "true_positives": 128,
+        "false_positives": 81,
+        "false_negatives": 26,
+        "precision": 0.6124,
+        "recall": 0.8312,
+        "false_positives_from_benign_anomalies": 81
+      }
+    },
+    "B": {
+      "D1": {
+        "targets": "auth_bruteforce",
+        "windows": 6400,
+        "attack_windows": 62,
+        "fired_windows": 196,
+        "true_positives": 61,
+        "false_positives": 135,
+        "false_negatives": 1,
+        "precision": 0.3112,
+        "recall": 0.9839,
+        "false_positives_from_benign_anomalies": 135
+      },
+      "D2": {
+        "targets": "unexpected_remote",
+        "windows": 6400,
+        "attack_windows": 62,
+        "fired_windows": 260,
+        "true_positives": 59,
+        "false_positives": 201,
+        "false_negatives": 3,
+        "precision": 0.2269,
+        "recall": 0.9516,
+        "false_positives_from_benign_anomalies": 201
+      },
+      "D3": {
+        "targets": "lateral_movement",
+        "windows": 6400,
+        "attack_windows": 55,
+        "fired_windows": 53,
+        "true_positives": 53,
+        "false_positives": 0,
+        "false_negatives": 2,
+        "precision": 1.0,
+        "recall": 0.9636,
+        "false_positives_from_benign_anomalies": 0
+      },
+      "D4": {
+        "targets": "abnormal_ot",
+        "windows": 6400,
+        "attack_windows": 40,
+        "fired_windows": 38,
+        "true_positives": 38,
+        "false_positives": 0,
+        "false_negatives": 2,
+        "precision": 1.0,
+        "recall": 0.95,
+        "false_positives_from_benign_anomalies": 0
+      },
+      "D5": {
+        "targets": "unexpected_config",
+        "windows": 6400,
+        "attack_windows": 52,
+        "fired_windows": 184,
+        "true_positives": 51,
+        "false_positives": 133,
+        "false_negatives": 1,
+        "precision": 0.2772,
+        "recall": 0.9808,
+        "false_positives_from_benign_anomalies": 133
+      },
+      "D6": {
+        "targets": "exploit_indicator",
+        "windows": 6400,
+        "attack_windows": 45,
+        "fired_windows": 83,
+        "true_positives": 40,
+        "false_positives": 43,
+        "false_negatives": 5,
+        "precision": 0.4819,
+        "recall": 0.8889,
+        "false_positives_from_benign_anomalies": 43
+      }
+    }
+  },
+  "pass_criteria": {
+    "P1_leakage_audit": "passed (data/ml/MANIFEST.json)",
+    "P2_determinism": true,
+    "P3_m1_pr_auc_above_b3": false,
+    "P4_m1_roc_auc_A_vs_0.80": 0.7347,
+    "P5_ece_not_worse": false,
+    "P6_monotonicity_violations": 0,
+    "P7_roc_auc_B": 0.6651
+  }
+}

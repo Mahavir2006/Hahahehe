@@ -1,25 +1,217 @@
 {
-  "model_version": "fa1a23ab35cdb78d",
+  "model_version": "e48d996a3f100d81",
+  "artifact_sha256": "938262723016c95b0162c75013be2d315e661418e17202257f5591082333d7b9",
   "features": [
-    "internet_exposed",
-    "cvss_base",
-    "epss_like",
-    "default_credentials",
+    "asset_type_code",
     "zone_ord",
-    "days_since_patch",
     "criticality",
-    "num_dependents",
     "safety_critical",
-    "supply_chain_flag"
+    "num_dependents",
+    "supply_chain_flag",
+    "internet_exposed",
+    "default_credentials",
+    "open_mgmt_ports",
+    "remote_access_enabled",
+    "firmware_known",
+    "days_since_patch",
+    "has_vulnerability",
+    "cve_count",
+    "max_cvss",
+    "max_epss",
+    "any_known_exploited",
+    "vuln_age_days",
+    "missing_cvss",
+    "missing_epss",
+    "failed_auth_count",
+    "new_remote_session_flag",
+    "rule_hit_count",
+    "high_severity_rule_hit"
   ],
-  "metrics": {
-    "auc": 0.8978945349156726,
-    "precision": 0.7453703703703703,
-    "recall": 0.6168582375478927,
-    "n_train": 4000,
-    "n_test": 1000,
-    "positive_rate": 0.2614
+  "config": {
+    "estimator": "hgb_monotonic",
+    "max_iter": 200,
+    "learning_rate": 0.1,
+    "max_depth": 3,
+    "l2_regularization": 0.0,
+    "choice": {
+      "gbc_best_cv_pr_auc": 0.502269,
+      "hgb_monotonic_best_cv_pr_auc": 0.49726,
+      "shap_supports_hgb": true,
+      "chosen": "hgb_monotonic",
+      "rule": "use hgb_monotonic if its CV PR-AUC >= gbc CV PR-AUC - 0.01 and SHAP supports it"
+    }
+  },
+  "calibration": {
+    "method": "sigmoid",
+    "positives_in_calibration_split": 276
+  },
+  "operating_threshold": {
+    "value": 0.11,
+    "rule": "maximise F2 on the validation split"
+  },
+  "training_data": {
+    "file": "data/ml/gen_a.csv",
+    "sha256": "6afa0633b4f723a7d533f7c6de3ec6853aaf36da6489b2503b8aad856a92f5b3",
+    "rows_train": 9600,
+    "positive_rate_train": 0.1686
   },
   "seed": 42,
-  "data": "synthetic (data/historical_incidents.csv)"
+  "sklearn": "1.9.1",
+  "epss_source": "proxy",
+  "shap_units": "log-odds of the uncalibrated base model",
+  "labels": "synthetic (data/label_process.py); results are on simulated data",
+  "search": [
+    {
+      "config": {
+        "estimator": "gbc",
+        "n_estimators": 200,
+        "learning_rate": 0.05,
+        "max_depth": 2
+      },
+      "cv_pr_auc": 0.502093
+    },
+    {
+      "config": {
+        "estimator": "gbc",
+        "n_estimators": 200,
+        "learning_rate": 0.05,
+        "max_depth": 3
+      },
+      "cv_pr_auc": 0.499815
+    },
+    {
+      "config": {
+        "estimator": "gbc",
+        "n_estimators": 200,
+        "learning_rate": 0.1,
+        "max_depth": 2
+      },
+      "cv_pr_auc": 0.502269
+    },
+    {
+      "config": {
+        "estimator": "gbc",
+        "n_estimators": 200,
+        "learning_rate": 0.1,
+        "max_depth": 3
+      },
+      "cv_pr_auc": 0.495936
+    },
+    {
+      "config": {
+        "estimator": "gbc",
+        "n_estimators": 300,
+        "learning_rate": 0.05,
+        "max_depth": 2
+      },
+      "cv_pr_auc": 0.502093
+    },
+    {
+      "config": {
+        "estimator": "gbc",
+        "n_estimators": 300,
+        "learning_rate": 0.05,
+        "max_depth": 3
+      },
+      "cv_pr_auc": 0.499815
+    },
+    {
+      "config": {
+        "estimator": "gbc",
+        "n_estimators": 300,
+        "learning_rate": 0.1,
+        "max_depth": 2
+      },
+      "cv_pr_auc": 0.502269
+    },
+    {
+      "config": {
+        "estimator": "gbc",
+        "n_estimators": 300,
+        "learning_rate": 0.1,
+        "max_depth": 3
+      },
+      "cv_pr_auc": 0.495936
+    },
+    {
+      "config": {
+        "estimator": "hgb_monotonic",
+        "max_iter": 200,
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "l2_regularization": 0.0
+      },
+      "cv_pr_auc": 0.496877
+    },
+    {
+      "config": {
+        "estimator": "hgb_monotonic",
+        "max_iter": 200,
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "l2_regularization": 1.0
+      },
+      "cv_pr_auc": 0.496891
+    },
+    {
+      "config": {
+        "estimator": "hgb_monotonic",
+        "max_iter": 200,
+        "learning_rate": 0.1,
+        "max_depth": 3,
+        "l2_regularization": 0.0
+      },
+      "cv_pr_auc": 0.49726
+    },
+    {
+      "config": {
+        "estimator": "hgb_monotonic",
+        "max_iter": 200,
+        "learning_rate": 0.1,
+        "max_depth": 3,
+        "l2_regularization": 1.0
+      },
+      "cv_pr_auc": 0.495638
+    },
+    {
+      "config": {
+        "estimator": "hgb_monotonic",
+        "max_iter": 300,
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "l2_regularization": 0.0
+      },
+      "cv_pr_auc": 0.496877
+    },
+    {
+      "config": {
+        "estimator": "hgb_monotonic",
+        "max_iter": 300,
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "l2_regularization": 1.0
+      },
+      "cv_pr_auc": 0.496891
+    },
+    {
+      "config": {
+        "estimator": "hgb_monotonic",
+        "max_iter": 300,
+        "learning_rate": 0.1,
+        "max_depth": 3,
+        "l2_regularization": 0.0
+      },
+      "cv_pr_auc": 0.49726
+    },
+    {
+      "config": {
+        "estimator": "hgb_monotonic",
+        "max_iter": 300,
+        "learning_rate": 0.1,
+        "max_depth": 3,
+        "l2_regularization": 1.0
+      },
+      "cv_pr_auc": 0.495638
+    }
+  ]
 }
