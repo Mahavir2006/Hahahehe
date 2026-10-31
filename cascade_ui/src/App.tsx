@@ -4,16 +4,18 @@ import { NavContext, PAGES, type PageId } from "@/app/nav"
 import { AssetPanel } from "@/components/AssetPanel"
 import { ErrorBoundary, PageSkeleton, Toaster } from "@/components/ui"
 import { assets, assetById, detectionsData, ranked } from "@/data/derive"
+import { sim, useLive } from "@/data/live"
 
 // every page is its own lazily-loaded chunk (code splitting)
 const lazyPages = Object.fromEntries(PAGES.map((p) => [p.id, lazy(p.load)])) as Record<PageId, React.LazyExoticComponent<React.ComponentType>>
 
 function readHash(): { page: PageId; asset: string | null } {
-  const [, page, asset] = location.hash.match(/^#\/([a-z]+)(?:\/([A-Z]{2}-\d{3}))?/) ?? []
+  const [, page, asset] = location.hash.match(/^#\/([a-z]+)(?:\/([a-z0-9-]+))?/) ?? []
   return { page: PAGES.some((p) => p.id === page) ? (page as PageId) : "dashboard", asset: asset && assetById.has(asset) ? asset : null }
 }
 
 export default function App() {
+  useLive() // re-render when live data refreshes
   const [{ page, asset }, setRoute] = useState(readHash)
   const [menuOpen, setMenuOpen] = useState(false)
   const [alertsOpen, setAlertsOpen] = useState(false)
@@ -129,8 +131,8 @@ export default function App() {
           )}
         </div>
 
-        <span className="sim-pill" title="Asset data in this UI is simulated for the demo">
-          Simulated data
+        <span className="sim-pill" title={sim.error ? `Backend: ${sim.error}` : `${sim.banner} Last refresh ${sim.lastUpdate}`} role="status">
+          {sim.error ? "Backend offline" : `Live · sim day ${sim.day}${sim.refreshing ? " · updating" : ""}`}
         </span>
         <button className="icon-btn" aria-label={`${critical.length} critical alerts`} aria-expanded={alertsOpen} onClick={() => setAlertsOpen((v) => !v)}>
           <Bell size={18} />
@@ -175,7 +177,7 @@ export default function App() {
             </span>
           </button>
         ))}
-        <p className="menu-foot">PS-03 · AI-based critical infrastructure cyber-risk prediction. Demo data is simulated.</p>
+        <p className="menu-foot">PS-03 · AI-based critical infrastructure cyber-risk prediction. Live backend data; assets and telemetry are simulated.</p>
       </nav>
 
       {/* desktop: compact page tabs under the top bar */}

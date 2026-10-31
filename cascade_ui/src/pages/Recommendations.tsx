@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react"
-import { Check } from "lucide-react"
 import { useNav } from "@/app/nav"
-import { Card, Level, Tag, toast } from "@/components/ui"
+import { Card, Level, Tag } from "@/components/ui"
+import { Approvals } from "@/components/Approvals"
+import { useLive } from "@/data/live"
 import { actionsFor, levelColor, levelOf, portfolio, ranked, riskAfter, type Action } from "@/data/derive"
 
 const KINDS: Action["kind"][] = ["Patch", "Segment", "Access control", "Monitoring", "Incident response"]
@@ -9,7 +10,7 @@ const KINDS: Action["kind"][] = ["Patch", "Segment", "Access control", "Monitori
 export default function Recommendations() {
   const { openAsset } = useNav()
   const [kinds, setKinds] = useState<Set<Action["kind"]>>(new Set(KINDS))
-  const [approved, setApproved] = useState<Record<string, number>>({})
+  const v = useLive()
 
   // every action across the portfolio, ranked by absolute risk removed
   const all = useMemo(
@@ -18,21 +19,16 @@ export default function Recommendations() {
         .flatMap((a) => actionsFor(a).map((x) => ({ a, x, gain: a.risk - riskAfter(a, [x]) })))
         .filter((r) => kinds.has(r.x.kind))
         .sort((p, q) => q.gain - p.gain),
-    [kinds],
+    [kinds, v],
   )
   const top = all.slice(0, 10)
   const before = portfolio.avgRisk
   const afterAvg = ranked.reduce((s, a) => s + riskAfter(a, actionsFor(a).filter((x) => top.some((t) => t.x.id === x.id))), 0) / ranked.length
 
-  const approve = (id: string, title: string) => {
-    // optimistic: count the vote immediately
-    setApproved((s) => ({ ...s, [id]: Math.min(2, (s[id] ?? 0) + 1) }))
-    toast((approved[id] ?? 0) + 1 >= 2 ? "Approved — ready to execute" : "Approval 1 of 2 recorded", title)
-  }
 
   return (
     <div className="page">
-      <Card title="If you do the top 10 actions" sub="Estimated by the what-if model on the simulated portfolio">
+      <Card title="If you do the top 10 actions" sub="Backend what-if: each action re-scored with the same M1 model on the live portfolio">
         <div className="impact">
           <div>
             <span>Average risk now</span>
@@ -72,11 +68,10 @@ export default function Recommendations() {
         </div>
       </Card>
 
-      <Card title="Prioritised action plan" sub="Biggest risk reduction first · every action needs 2 human approvals (ApprovalGate)">
+      <Card title="Prioritised action plan" sub="Biggest risk reduction first · open an asset to safety-check and submit a quarantine for approval">
         <ol className="plan">
           {top.map(({ a, x, gain }, i) => {
             const after = riskAfter(a, [x])
-            const votes = approved[x.id] ?? 0
             return (
               <li key={x.id}>
                 <span className="rank">{i + 1}</span>
@@ -99,20 +94,16 @@ export default function Recommendations() {
                   <small className="ok">−{gain.toFixed(1)} pts</small>
                   <Level level={levelOf(after)} />
                 </div>
-                <button className={`btn ${votes >= 2 ? "btn-ok" : "btn-primary"}`} disabled={votes >= 2} onClick={() => approve(x.id, `${x.title} · ${a.id}`)}>
-                  {votes >= 2 ? (
-                    <>
-                      <Check size={14} /> Approved
-                    </>
-                  ) : (
-                    `Approve (${votes}/2)`
-                  )}
+                <button className="btn btn-primary" onClick={() => openAsset(a.id)}>
+                  Review
                 </button>
               </li>
             )
           })}
         </ol>
       </Card>
+
+      <Approvals />
     </div>
   )
 }

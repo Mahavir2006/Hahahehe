@@ -6,10 +6,9 @@ import { cascadeChain, levelColor, predict, ranked, sectorOf, THRESHOLDS } from 
 export default function RiskAnalysis() {
   const { openAsset, focusAsset } = useNav()
   const [id, setId] = useState(focusAsset ?? ranked[0].id)
-  const a = ranked.find((x) => x.id === id)!
+  const a = ranked.find((x) => x.id === id) ?? ranked[0]
   const p = predict(a.id)
-  const base = 25 // average likelihood before asset-specific factors (illustrative)
-  const max = Math.max(...p.shapFactors.map((f) => Math.abs(f.bpDelta)))
+  const max = Math.max(1, ...p.shapFactors.map((f) => Math.abs(f.bpDelta)))
 
   return (
     <div className="page">
@@ -34,7 +33,7 @@ export default function RiskAnalysis() {
           </div>
         </div>
         <p className="muted small">
-          Bands: Critical ≥ {THRESHOLDS.critical} · High ≥ {THRESHOLDS.high} · Medium ≥ {THRESHOLDS.medium} · otherwise Low. A band only moves when the score clears the boundary by a margin (hysteresis), so alerts don't flap.
+          Bands (from the model's held-out test split): Critical &gt; {THRESHOLDS.critical} · High &gt; {THRESHOLDS.high} · Medium &gt; {THRESHOLDS.medium} · otherwise Low. Risk = 100 × likelihood × (0.3 + 0.7 × impact).
         </p>
       </Card>
 
@@ -54,12 +53,12 @@ export default function RiskAnalysis() {
         </Card>
 
         <div className="stack">
-          <Card title={`Why ${a.id} is ${a.level.toLowerCase()} risk`} sub="SHAP explanation: how much each factor moves the score (points)">
+          <Card title={`Why ${a.id} is ${a.level.toLowerCase()} risk`} sub="SHAP explanation (M1 base model, log-odds): how much each factor pushes the likelihood up or down">
             <div className="waterfall">
               <div className="wf-row base">
-                <span>Typical asset</span>
-                <i style={{ width: `${base}%` }} />
-                <b>{base}</b>
+                <span>Average asset (SHAP base value)</span>
+                <i style={{ width: "25%" }} />
+                <b>{p.shapBase.toFixed(2)}</b>
               </div>
               {p.shapFactors.map((f) => (
                 <div key={f.feature} className="wf-row">
@@ -67,7 +66,7 @@ export default function RiskAnalysis() {
                   <i className={f.bpDelta > 0 ? "up" : "down"} style={{ width: `${(Math.abs(f.bpDelta) / max) * 60}%` }} />
                   <b className={f.bpDelta > 0 ? "up" : "down"}>
                     {f.bpDelta > 0 ? "+" : "−"}
-                    {(Math.abs(f.bpDelta) / 100).toFixed(1)}
+                    {(Math.abs(f.bpDelta) / 100).toFixed(2)}
                   </b>
                 </div>
               ))}
@@ -84,11 +83,19 @@ export default function RiskAnalysis() {
           </Card>
 
           <div className="grid-2">
-            <Card title="Trend & forecast" sub="Holt trend on recent scores">
+            <Card title="Trend & forecast" sub="Holt linear trend + EWMA on the risk log (statistical, not ML)">
               <div className="trend">
                 <Sparkline data={p.sparkline} color={levelColor[a.level]} w={220} h={60} />
                 <p>
-                  Rising — expected to reach the next band in <b>~{p.holtForecastDays.toFixed(1)} days</b> without action.
+                  Trend: <b>{p.trendDirection}</b>
+                  {p.holtForecastDays != null ? (
+                    <>
+                      {" "}
+                      — next band in <b>~{p.holtForecastDays.toFixed(1)} days</b> without action.
+                    </>
+                  ) : (
+                    " — no band change projected."
+                  )}
                 </p>
               </div>
             </Card>

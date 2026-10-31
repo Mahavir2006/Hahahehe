@@ -1,7 +1,9 @@
 import { Card, Tag } from "@/components/ui"
 import { MODEL } from "@/data/derive"
+import { useLive } from "@/data/live"
 
 export default function Model() {
+  useLive()
   return (
     <div className="page">
       <div className="grid-2">
@@ -14,7 +16,7 @@ export default function Model() {
             <dt>Explanation</dt>
             <dd>{MODEL.explain}</dd>
             <dt>Inputs</dt>
-            <dd>{MODEL.features} features: vulnerability severity, known exploitation, exposure, patch age, open management ports, remote access, firmware trust, detections, criticality, dependants</dd>
+            <dd>{MODEL.features} features (live from /api/ps03/model/info): vulnerability severity, known exploitation, exposure, patch age, open management ports, remote access, firmware trust, detections, criticality, dependants</dd>
             <dt>Training data</dt>
             <dd>{MODEL.rows}</dd>
             <dt>Real data used</dt>
@@ -24,7 +26,7 @@ export default function Model() {
               <Tag tone="warn">{MODEL.labels}</Tag>
             </dd>
             <dt>Alert threshold</dt>
-            <dd>{MODEL.threshold} (chosen to maximise F1, fixed before testing)</dd>
+            <dd>{MODEL.threshold} (alert threshold from metrics.json)</dd>
           </dl>
         </Card>
 
@@ -54,7 +56,7 @@ export default function Model() {
           {MODEL.metrics.map((m) => (
             <div className="stat" key={m.label}>
               <span>{m.label}</span>
-              <strong>{m.value.toFixed(3)}</strong>
+              <strong>{Number.isFinite(m.value) ? m.value.toFixed(3) : "n/a"}</strong>
             </div>
           ))}
         </div>
@@ -65,7 +67,10 @@ export default function Model() {
           <ul className="list">
             <li>Compromise labels are synthetic; real incident data would be needed for production accuracy claims.</li>
             <li>Recall at the alert threshold is 0.41: the model flags the riskiest assets first rather than catching every incident, so detections and rules run alongside it.</li>
-            <li>Dashboard scores are on a 0–100 display scale for the demo; the model's own bands are Low &lt; {MODEL.bands.low}, Medium &lt; {MODEL.bands.medium}, High &lt; {MODEL.bands.high}, Critical above.</li>
+            <li>Risk is shown on a 0–100 scale (100 × likelihood × (0.3 + 0.7 × impact)); bands are Low ≤ {MODEL.bands.low}, Medium ≤ {MODEL.bands.medium}, High ≤ {MODEL.bands.high}, Critical above.</li>
+            {MODEL.caveats.slice(0, 3).map((c) => (
+              <li key={c}>{c}</li>
+            ))}
           </ul>
         </Card>
         <Card title="Safeguards">

@@ -3,6 +3,7 @@ import { ChevronRight, Globe2 } from "lucide-react"
 import { useNav } from "@/app/nav"
 import { Card, EmptyState, Level, RiskBar, Tag } from "@/components/ui"
 import { assets, detectionsData, exposureFindings, isInternet, levelColor, predict, sectorOf, type RiskLevel } from "@/data/derive"
+import { useLive } from "@/data/live"
 
 const PAGE = 8
 type Sort = "risk" | "likelihood" | "impact" | "id"
@@ -16,6 +17,7 @@ export default function Assets() {
   const [onlyKev, setOnlyKev] = useState(false)
   const [sort, setSort] = useState<Sort>("risk")
   const [page, setPage] = useState(1)
+  const v = useLive()
 
   const rows = useMemo(() => {
     const n = query.trim().toLowerCase()
@@ -23,7 +25,7 @@ export default function Assets() {
       .filter((a) => (level === "All" || a.level === level) && (sector === "All" || a.org === sector) && (!onlyKev || predict(a.id).vulnData.kevBadge))
       .filter((a) => !n || `${a.id} ${a.name} ${a.type} ${a.location} ${a.vulnerability} ${predict(a.id).vulnData.cveId}`.toLowerCase().includes(n))
       .sort((x, y) => (sort === "id" ? x.id.localeCompare(y.id) : y[sort] - x[sort]))
-  }, [query, level, sector, onlyKev, sort])
+  }, [query, level, sector, onlyKev, sort, v])
   const pages = Math.max(1, Math.ceil(rows.length / PAGE))
   const cur = Math.min(page, pages)
   const shown = rows.slice((cur - 1) * PAGE, cur * PAGE)
@@ -32,8 +34,8 @@ export default function Assets() {
   return (
     <div className="page">
       <div className="grid-3">
-        {exposureFindings.map((x) => (
-          <Card key={x.code} className="finding">
+        {exposureFindings.slice(0, 6).map((x, i) => (
+          <Card key={`${x.code}-${x.assetId}-${i}`} className="finding">
             <div className="row-between">
               <Tag tone={x.severity === "Critical" ? "danger" : x.severity === "High" ? "warn" : "info"}>
                 {x.code} · {x.severity}
@@ -162,9 +164,9 @@ export default function Assets() {
         </nav>
       </Card>
 
-      <Card title="Live detections" sub="Network-activity rules on simulated telemetry">
+      <Card title="Live detections" sub={`Rules R1–R6 on simulated telemetry · ${detectionsData.length} findings, latest 30 shown · exposure findings: ${exposureFindings.length}`}>
         <ul className="det-list">
-          {detectionsData.map((d) => (
+          {detectionsData.slice(0, 30).map((d) => (
             <li key={d.id}>
               <Tag tone={d.severity === "Critical" ? "danger" : d.severity === "High" ? "warn" : "info"}>
                 {d.ruleId} · {d.ruleName}

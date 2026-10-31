@@ -3,7 +3,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { useNav } from "@/app/nav"
 import { RiskMap } from "@/components/RiskMap"
 import { Card, Level, RiskBar, Stat, Tag } from "@/components/ui"
-import { actionsFor, cascadeChain, LEVELS, levelColor, orgRisk, portfolio, predict, ranked, riskAfter, riskTimelineData, sectorOf, whatChangedFeed, isInternet } from "@/data/derive"
+import { actionsFor, cascadeChain, LEVELS, levelColor, orgRisk, portfolio, predict, ranked, riskAfter, riskTimelineData, sectorOf, THRESHOLDS, whatChangedFeed, isInternet } from "@/data/derive"
 
 export default function Dashboard() {
   const { openAsset, go, focusAsset } = useNav()
@@ -15,7 +15,7 @@ export default function Dashboard() {
     <div className="page">
       <div className="grid-stats">
         <Stat label="Portfolio risk (avg)" value={portfolio.avgRisk.toFixed(1)} hint={`${portfolio.total} monitored assets`} tone="#f0a04b" />
-        <Stat label="Need urgent attention" value={portfolio.urgent} hint="risk ≥ 60 (High or Critical)" tone="#ef5b5b" />
+        <Stat label="Need urgent attention" value={portfolio.urgent} hint={`High or Critical band (risk > ${THRESHOLDS.high.toFixed(1)})`} tone="#ef5b5b" />
         <Stat label="Known-exploited CVEs" value={portfolio.kev} hint="listed in CISA KEV" tone="#ef5b5b" />
         <Stat label="Internet-facing assets" value={portfolio.internet} hint={`${portfolio.unpatched} assets with open vulnerabilities`} tone="#e3c55a" />
         <Stat label="Can trigger a cascade" value={portfolio.cascadeSources} hint="reach 2+ downstream assets" tone="#38bdf8" />
@@ -37,7 +37,7 @@ export default function Dashboard() {
               <tbody>
                 {top.map((a, i) => {
                   const fix = actionsFor(a)[0]
-                  const after = riskAfter(a, [fix])
+                  const after = fix ? riskAfter(a, [fix]) : a.risk
                   const why = predict(a.id).shapFactors[0]
                   return (
                     <tr key={a.id} tabIndex={0} onClick={() => openAsset(a.id)} onKeyDown={(e) => e.key === "Enter" && openAsset(a.id)}>
@@ -57,12 +57,18 @@ export default function Dashboard() {
                         </div>
                         <RiskBar value={a.risk} level={a.level} />
                       </td>
-                      <td className="hide-sm">{why.feature}</td>
+                      <td className="hide-sm">{why?.feature ?? "—"}</td>
                       <td className="hide-sm">
-                        {fix.title}
-                        <small className="ok">
-                          → {after.toFixed(1)} (−{Math.round(fix.reduction * 100)}%)
-                        </small>
+                        {fix ? (
+                          <>
+                            {fix.title}
+                            <small className="ok">
+                              → {after.toFixed(1)} (−{Math.round(fix.reduction * 100)}%)
+                            </small>
+                          </>
+                        ) : (
+                          "No action needed"
+                        )}
                       </td>
                     </tr>
                   )
@@ -107,24 +113,25 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card title="Changing threat level" sub="Portfolio risk over the simulated week, with forecast">
+        <Card title="Changing threat level" sub={`Portfolio risk per simulated day (mean of the three org aggregates), last ${riskTimelineData.length} days`}>
           <div className="chart">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={riskTimelineData} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+              <AreaChart data={riskTimelineData.slice() /* recharts freezes its data; keep the live array mutable */} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
                 <defs>
                   <linearGradient id="rg" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="0" stopColor="#ef5b5b" stopOpacity={0.45} />
                     <stop offset="1" stopColor="#ef5b5b" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="dayIndex" tickFormatter={(d) => (d === 7 ? "D7 (fc)" : `D${d}`)} stroke="#64748b" fontSize={11} />
-                <YAxis domain={[30, 90]} stroke="#64748b" fontSize={11} />
-                <Tooltip contentStyle={{ background: "#0f1b27", border: "1px solid #24384c", borderRadius: 8 }} labelFormatter={(d) => riskTimelineData[Number(d) - 1]?.day} formatter={(v) => [Number(v).toFixed(1), "risk"]} />
+                <XAxis dataKey="dayIndex" tickFormatter={(d) => `D${d}`} stroke="#64748b" fontSize={11} />
+                <YAxis domain={["auto", "auto"]} stroke="#64748b" fontSize={11} />
+                <Tooltip contentStyle={{ background: "#0f1b27", border: "1px solid #24384c", borderRadius: 8 }} labelFormatter={(d) => `Day ${d}`} formatter={(v) => [Number(v).toFixed(1), "risk"]} />
                 <Area dataKey="risk" stroke="#ef5b5b" fill="url(#rg)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
           <ul className="changes">
+            {!whatChangedFeed.length && <li className="muted">No change of 1+ risk point in the last 7 simulated days.</li>}
             {whatChangedFeed.slice(0, 3).map((c) => (
               <li key={c.id}>
                 <button onClick={() => openAsset(c.assetId)}>
@@ -133,7 +140,7 @@ export default function Dashboard() {
                     {(c.deltaBp / 100).toFixed(1)}
                   </b>
                   <span>
-                    <strong>{c.assetId}</strong> {c.cause}
+                    <strong>{c.assetId}</strong> {c.cause} <small>{c.timestamp}</small>
                   </span>
                 </button>
               </li>

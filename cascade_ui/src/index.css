@@ -330,3 +330,8 @@ code.hash { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
+
+/* live-data boot screen and approval actions */
+.boot { min-height: 100vh; display: grid; place-content: center; gap: 12px; text-align: center; padding: 24px; color: #e2e8f0; background: #0b1520; }
+.boot strong { font-size: 20px; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }

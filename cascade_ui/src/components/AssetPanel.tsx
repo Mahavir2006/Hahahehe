@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { ArrowRight, ExternalLink, Globe2, X } from "lucide-react"
 import { actionsFor, assetById, cascadeChain, detectionsData, levelColor, levelOf, orgRisk, predict, riskAfter, sectorOf } from "@/data/derive"
+import { api, BACKEND_ORG, explainNow, mutate } from "@/data/live"
 import { Level, RiskBar, Sparkline, Tag, toast } from "./ui"
 
 /** Sliding side panel: everything about one asset — profile, vulnerabilities, why it is risky, cascade, fixes. */
@@ -8,10 +9,12 @@ export function AssetPanel({ id, onClose }: { id: string | null; onClose: () => 
   const a = id ? assetById.get(id) : undefined
   const ref = useRef<HTMLElement>(null)
   const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [sending, setSending] = useState(false)
 
   useEffect(() => {
     if (!a) return
     setPicked(new Set(actionsFor(a).slice(0, 2).map((x) => x.id)))
+    explainNow(a.id).then(() => setPicked((s) => (s.size ? s : new Set(actionsFor(a).slice(0, 2).map((x) => x.id)))))
     const prev = document.activeElement as HTMLElement | null
     ref.current?.focus()
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
@@ -20,7 +23,8 @@ export function AssetPanel({ id, onClose }: { id: string | null; onClose: () => 
       window.removeEventListener("keydown", onKey)
       prev?.focus?.()
     }
-  }, [a, onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [a?.id, onClose])
 
   const open = !!a
   if (!a)
@@ -32,13 +36,34 @@ export function AssetPanel({ id, onClose }: { id: string | null; onClose: () => 
     )
 
   const p = predict(a.id)
-  const org = orgRisk.find((o) => o.code === a.org)!
+  const orgRow = orgRisk.find((o) => o.code === a.org)
   const actions = actionsFor(a)
   const chosen = actions.filter((x) => picked.has(x.id))
   const after = riskAfter(a, chosen)
   const chain = cascadeChain(a.id)
-  const dets = detectionsData.filter((d) => d.assetId === a.id)
-  const maxBp = Math.max(...p.shapFactors.map((f) => Math.abs(f.bpDelta)))
+  const dets = detectionsData.filter((d) => d.assetId === a.id).slice(0, 6)
+  const maxBp = Math.max(1, ...p.shapFactors.map((f) => Math.abs(f.bpDelta)))
+  const backendOrg = BACKEND_ORG[a.org]
+  const send = async () => {
+    setSending(true)
+    try {
+      const pc = await api("/api/ps03/containment/precheck", { org: backendOrg, actions: chosen.map((x) => ({ action: x.code, targets: [a.id] })) })
+      if (!pc.ok) {
+        toast("Safety precheck blocked the plan", (pc.blocking ?? []).join("; ").slice(0, 300), "warn")
+        return
+      }
+      if (chosen.some((x) => x.code === "ISOLATE_ASSET")) {
+        const r = await mutate(() => api("/api/ps03/containment/level2", { org: backendOrg, asset_id: a.id }))
+        toast("Quarantine plan sent for human approval", `${r.plan_id} · Critic: ${r.critic?.verdict ?? "?"} · approve it under Recommendations → Human approvals`)
+      } else {
+        toast("Safety precheck passed", `${(pc.warnings ?? []).length} warning(s). Only containment level 2 (quarantine) can be submitted from the UI; other actions are planned by the agents when an advisory arrives.`, "ok")
+      }
+    } catch (e) {
+      toast("Request failed", e instanceof Error ? e.message : String(e), "warn")
+    } finally {
+      setSending(false)
+    }
+  }
 
   return (
     <>
@@ -47,7 +72,7 @@ export function AssetPanel({ id, onClose }: { id: string | null; onClose: () => 
         <header className="ps-head">
           <div>
             <span className="eyebrow" style={{ color: sectorOf[a.org].color }}>
-              {sectorOf[a.org].label} · {org.name}
+              {sectorOf[a.org].label} · {orgRow?.name}
             </span>
             <h2>
               {a.id} · {a.name}
@@ -80,12 +105,12 @@ export function AssetPanel({ id, onClose }: { id: string | null; onClose: () => 
           <div>
             <span>Trend</span>
             <Sparkline data={p.sparkline} color={levelColor[a.level]} w={80} />
-            <small>next band in ~{p.holtForecastDays.toFixed(1)} d</small>
+            <small>{p.holtForecastDays != null ? `next band in ~${p.holtForecastDays.toFixed(1)} d` : p.trendDirection}</small>
           </div>
         </div>
 
         <section className="ps-sec">
-          <h3>Why this asset is {a.level.toLowerCase()} risk</h3>
+          <h3>Why this asset is {a.level.toLowerCase()} risk (SHAP, log-odds)</h3>
           <ul className="factors">
             {p.shapFactors.map((f) => (
               <li key={f.feature}>
@@ -93,7 +118,7 @@ export function AssetPanel({ id, onClose }: { id: string | null; onClose: () => 
                 <i className={f.bpDelta > 0 ? "up" : "down"} style={{ width: `${(Math.abs(f.bpDelta) / maxBp) * 100}%` }} />
                 <b className={f.bpDelta > 0 ? "up" : "down"}>
                   {f.bpDelta > 0 ? "+" : "−"}
-                  {(Math.abs(f.bpDelta) / 100).toFixed(1)}
+                  {(Math.abs(f.bpDelta) / 100).toFixed(2)}
                 </b>
               </li>
             ))}
@@ -169,7 +194,7 @@ export function AssetPanel({ id, onClose }: { id: string | null; onClose: () => 
         </section>
 
         <section className="ps-sec">
-          <h3>Recommended actions — pick to see the effect</h3>
+          <h3>Recommended actions — backend what-if, pick to see the effect</h3>
           <ul className="acts">
             {actions.map((x) => (
               <li key={x.id}>
@@ -210,12 +235,8 @@ export function AssetPanel({ id, onClose }: { id: string | null; onClose: () => 
             </div>
             <RiskBar value={after} level={levelOf(after)} />
           </div>
-          <button
-            className="btn btn-primary full"
-            disabled={!chosen.length}
-            onClick={() => toast("Plan sent for human approval", `${chosen.length} action(s) for ${a.id} · 2 approvers on ApprovalGate (demo)`)}
-          >
-            Send plan for approval <ExternalLink size={14} />
+          <button className="btn btn-primary full" disabled={!chosen.length || sending} onClick={send}>
+            {sending ? "Checking with the agents…" : "Safety-check and send for approval"} <ExternalLink size={14} />
           </button>
         </section>
       </aside>

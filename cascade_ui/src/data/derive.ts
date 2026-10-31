@@ -1,9 +1,27 @@
-// Single source for every number the UI shows. Demo asset data is simulated; project facts come from the
-// CascadeShield repository (backend/risk/artifacts/metrics.json, tests and contracts).
-import { assets, assetById, dependencies, downstreamOf, organisations, type Asset, type RiskLevel } from "./infrastructure"
-import { getAssetPredictDetails, detectionsData, exposureFindings, whatChangedFeed, riskTimelineData } from "./cascadeshieldData"
+// Single source for every number the UI shows. All values come from the live CascadeShield backend (see live.ts);
+// asset locations on the map are illustrative.
+import {
+  afterLoad,
+  assetById,
+  assets,
+  bandThresholds,
+  chain,
+  dependencies,
+  detectionsData,
+  exposureFindings,
+  modelInfo,
+  organisations,
+  predictMap,
+  riskTimelineData,
+  traces,
+  whatChangedFeed,
+  type Asset,
+  type AssetPredictDetails,
+  type BackendAction,
+  type RiskLevel,
+} from "./live"
 
-export { assets, assetById, dependencies, downstreamOf, organisations, detectionsData, exposureFindings, whatChangedFeed, riskTimelineData }
+export { assets, assetById, dependencies, organisations, detectionsData, exposureFindings, whatChangedFeed, riskTimelineData, chain, traces }
 export type { Asset, RiskLevel }
 
 export const LEVELS: RiskLevel[] = ["Critical", "High", "Medium", "Low"]
@@ -13,86 +31,150 @@ export const sectorOf: Record<string, { label: string; color: string; icon: "pow
   MetroWater: { label: "Water", color: "#a78bfa", icon: "water" },
   CCMN: { label: "Healthcare", color: "#f472b6", icon: "health" },
 }
-export const THRESHOLDS = { critical: 75, high: 60, medium: 40 }
+/** The model's own risk bands (from metrics.json band_thresholds): Critical above high_max, and so on. */
+export const THRESHOLDS = {
+  get critical() {
+    return bandThresholds.high
+  },
+  get high() {
+    return bandThresholds.medium
+  },
+  get medium() {
+    return bandThresholds.low
+  },
+}
 
-export const predict = (id: string) => getAssetPredictDetails(id)
+const EMPTY: AssetPredictDetails = {
+  shapFactors: [],
+  shapBase: 0,
+  holtForecastDays: null,
+  trendDirection: "unknown",
+  evidenceFloorActive: false,
+  sparkline: [],
+  protectedLifeCritical: false,
+  actions: [],
+  patchDowntime: false,
+  maintenanceWindow: "none",
+  vulnData: { cveId: "none", cvss: 0, epss: 0, kevBadge: false, patchAgeDays: 0, source: "Simulated" },
+}
+export const predict = (id: string): AssetPredictDetails => predictMap.get(id) ?? EMPTY
 export const isInternet = (a: Asset) => a.exposure.toLowerCase().includes("internet")
 export const isUnpatched = (a: Asset) => a.vulnerability !== "Patched"
 
-/** Assets ranked by risk, highest first (risk prioritisation). */
-export const ranked = [...assets].sort((a, b) => b.risk - a.risk)
+/** Assets reachable downstream of an asset through any dependency. */
+export function downstreamOf(assetId: string): Set<string> {
+  const seen = new Set<string>()
+  const queue = [assetId]
+  while (queue.length) {
+    const current = queue.shift()!
+    for (const dep of dependencies) {
+      if (dep.from === current && !seen.has(dep.to) && dep.to !== assetId) {
+        seen.add(dep.to)
+        queue.push(dep.to)
+      }
+    }
+  }
+  return seen
+}
 
-/* ---------- preventive recommendations with estimated risk reduction ---------- */
+/** Assets ranked by risk, highest first (risk prioritisation). */
+export const ranked: Asset[] = []
+
+/* ---------- preventive recommendations: the backend's what-if recomputation with the same model ---------- */
 
 export interface Action {
   id: string
+  code: string // backend action, e.g. ISOLATE_ASSET
   kind: "Patch" | "Segment" | "Access control" | "Monitoring" | "Incident response"
   title: string
   detail: string
-  reduction: number // fraction of the asset's risk removed (estimated by the what-if model)
-  effort: "Low" | "Medium" | "High"
+  reduction: number // fraction of the asset's risk removed (backend what-if)
+  riskAfter: number
+  effort: string
   downtime: string
+}
+
+const KIND: Record<string, Action["kind"]> = {
+  PATCH: "Patch",
+  ISOLATE_ASSET: "Segment",
+  RESTRICT_ACCESS: "Segment",
+  DISABLE_SERVICE_PORT: "Segment",
+  ROTATE_CREDENTIALS: "Access control",
+  DISABLE_REMOTE_ACCESS: "Access control",
+  ENABLE_MONITORING: "Monitoring",
+}
+const title = (s: string) => {
+  const t = s.replace(/_/g, " ").toLowerCase()
+  return t.charAt(0).toUpperCase() + t.slice(1)
 }
 
 export function actionsFor(a: Asset): Action[] {
   const p = predict(a.id)
-  const out: Action[] = []
-  const credentialIssue = /credential/i.test(a.vulnerability)
-  if (isUnpatched(a) && !credentialIssue) {
-    const cve = a.vulnerability.startsWith("CVE") ? a.vulnerability : p.vulnData.cveId
-    out.push({
-      id: `${a.id}-patch`,
-      kind: "Patch",
-      title: p.vulnData.kevBadge ? `Patch ${cve} now (known exploited)` : `Patch ${a.vulnerability.startsWith("CVE") ? cve : a.vulnerability + " vulnerabilities"}`,
-      detail: `Apply the vendor fix in the next maintenance window; CVSS ${p.vulnData.cvss.toFixed(1)}, EPSS ${(p.vulnData.epss * 100).toFixed(0)}%.`,
-      reduction: p.vulnData.kevBadge ? 0.42 : 0.24,
-      effort: "Medium",
-      downtime: "30–60 min",
-    })
-  }
-  if (isInternet(a)) {
-    out.push({ id: `${a.id}-seg`, kind: "Segment", title: "Remove internet exposure", detail: "Move the management interface behind the OT DMZ jump host and block WAN access at the edge firewall.", reduction: 0.3, effort: "Low", downtime: "None" })
-  } else if (a.exposure === "Partner network") {
-    out.push({ id: `${a.id}-seg`, kind: "Segment", title: "Segment the partner link", detail: "Restrict the partner VLAN to the required protocols and ports (allow-list).", reduction: 0.18, effort: "Medium", downtime: "15 min" })
-  }
-  if (/credential|vpn|remote/i.test(a.vulnerability + a.type + a.name)) {
-    out.push({ id: `${a.id}-iam`, kind: "Access control", title: "Enforce MFA and rotate credentials", detail: "Replace default or shared credentials and require hardware MFA for remote sessions.", reduction: credentialIssue ? 0.38 : 0.22, effort: "Low", downtime: "None" })
-  }
-  if (a.risk >= THRESHOLDS.high) {
-    out.push({ id: `${a.id}-mon`, kind: "Monitoring", title: "Enhanced monitoring", detail: "Turn on the D1–D6 detection rules at high sensitivity and forward alerts to the SOC.", reduction: 0.08, effort: "Low", downtime: "None" })
-    out.push({ id: `${a.id}-ir`, kind: "Incident response", title: "Pre-stage the containment playbook", detail: "Prepare the isolation runbook and approvers so containment takes minutes, not hours.", reduction: 0.05, effort: "Low", downtime: "None" })
-  }
-  if (!out.length) out.push({ id: `${a.id}-mon`, kind: "Monitoring", title: "Keep under routine monitoring", detail: "No urgent action; reassess when a new advisory arrives.", reduction: 0.03, effort: "Low", downtime: "None" })
-  return out
+  return p.actions
+    .filter((x: BackendAction) => x.asset_risk_before > 0)
+    .map((x: BackendAction) => ({
+      id: `${a.id}-${x.action}`,
+      code: x.action,
+      kind: KIND[x.action] ?? "Incident response",
+      title: title(x.action) + (x.level ? ` (containment level ${x.level})` : ""),
+      detail: x.why,
+      reduction: Math.max(0, Math.min(1, 1 - x.asset_risk_after / x.asset_risk_before)),
+      riskAfter: x.asset_risk_after,
+      effort: x.level === 2 ? "High (needs 2 approvals)" : x.action === "PATCH" ? "Medium" : "Low",
+      downtime: x.action === "PATCH" ? (p.patchDowntime ? `required · window ${p.maintenanceWindow}` : "none") : x.action === "ISOLATE_ASSET" ? "asset offline while quarantined" : "none",
+    }))
+    .sort((x, y) => y.reduction - x.reduction)
 }
 
-/** Risk after applying a set of actions (reductions compound multiplicatively). */
+/** Risk after applying a set of actions. One action is the backend's exact what-if; several compound (estimate). */
 export function riskAfter(a: Asset, chosen: Action[]) {
+  if (chosen.length === 1) return chosen[0].riskAfter
   return chosen.reduce((r, act) => r * (1 - act.reduction), a.risk)
 }
 
 export function levelOf(risk: number): RiskLevel {
-  return risk >= THRESHOLDS.critical ? "Critical" : risk >= THRESHOLDS.high ? "High" : risk >= THRESHOLDS.medium ? "Medium" : "Low"
+  return risk > THRESHOLDS.critical ? "Critical" : risk > THRESHOLDS.high ? "High" : risk > THRESHOLDS.medium ? "Medium" : "Low"
 }
 
-/* ---------- portfolio-level figures ---------- */
+/* ---------- portfolio-level figures (recomputed after every refresh) ---------- */
 
-const mean = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length
+const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0)
 export const portfolio = {
-  total: assets.length,
-  avgRisk: mean(assets.map((a) => a.risk)),
-  byLevel: Object.fromEntries(LEVELS.map((l) => [l, assets.filter((a) => a.level === l).length])) as Record<RiskLevel, number>,
-  urgent: assets.filter((a) => a.risk >= THRESHOLDS.high).length,
-  internet: assets.filter(isInternet).length,
-  unpatched: assets.filter(isUnpatched).length,
-  kev: assets.filter((a) => predict(a.id).vulnData.kevBadge).length,
-  cascadeSources: assets.filter((a) => downstreamOf(a.id).size >= 2).length,
-  detections: detectionsData.length,
+  total: 0,
+  avgRisk: 0,
+  byLevel: { Critical: 0, High: 0, Medium: 0, Low: 0 } as Record<RiskLevel, number>,
+  urgent: 0,
+  internet: 0,
+  unpatched: 0,
+  kev: 0,
+  cascadeSources: 0,
+  detections: 0,
 }
-export const orgRisk = organisations.map((o) => {
+export const orgRisk: (ReturnType<typeof orgRow>)[] = []
+function orgRow(o: (typeof organisations)[number]) {
   const own = assets.filter((a) => a.org === o.code)
-  return { ...o, sector: sectorOf[o.code], count: own.length, avg: mean(own.map((a) => a.risk)), max: Math.max(...own.map((a) => a.risk)), critical: own.filter((a) => a.level === "Critical").length }
-})
+  return { ...o, sector: sectorOf[o.code], count: own.length, avg: mean(own.map((a) => a.risk)), max: own.length ? Math.max(...own.map((a) => a.risk)) : 0, critical: own.filter((a) => a.level === "Critical").length }
+}
+
+function recompute() {
+  ranked.length = 0
+  ranked.push(...[...assets].sort((a, b) => b.risk - a.risk))
+  Object.assign(portfolio, {
+    total: assets.length,
+    avgRisk: mean(assets.map((a) => a.risk)),
+    byLevel: Object.fromEntries(LEVELS.map((l) => [l, assets.filter((a) => a.level === l).length])),
+    urgent: assets.filter((a) => a.level === "Critical" || a.level === "High").length,
+    internet: assets.filter(isInternet).length,
+    unpatched: assets.filter(isUnpatched).length,
+    kev: assets.filter((a) => predict(a.id).vulnData.kevBadge).length,
+    cascadeSources: assets.filter((a) => downstreamOf(a.id).size >= 2).length,
+    detections: detectionsData.length,
+  })
+  orgRisk.length = 0
+  orgRisk.push(...organisations.map(orgRow))
+  rebuildModel()
+}
+afterLoad.push(recompute)
 
 /** Ordered cascade chain from a source asset (breadth-first, with the edge that reaches each hop). */
 export function cascadeChain(id: string) {
@@ -113,41 +195,69 @@ export function cascadeChain(id: string) {
   return out
 }
 
-/* ---------- facts about the CascadeShield platform (from the repository) ---------- */
+/* ---------- the M1 model card, from /api/ps03/model/info ---------- */
 
 export const MODEL = {
   name: "M1",
-  version: "1e50403a7534041c",
-  estimator: "Gradient-boosted trees (HistGradientBoosting) with monotonic constraints",
-  calibration: "Sigmoid (Platt) calibration on a held-out split",
-  explain: "SHAP TreeExplainer: per-asset factor contributions",
-  features: 24,
-  rows: "16,000 training rows (2,000 assets × 8 windows), plus a second generator for robustness",
-  realData: "Real CISA CSAF OT advisories, CISA KEV and NVD, time-matched",
-  labels: "Synthetic compromise labels (simulated data)",
-  threshold: 0.36,
-  metrics: [
-    { label: "ROC-AUC (held-out assets)", value: 0.7548 },
-    { label: "ROC-AUC (future time window)", value: 0.7641 },
-    { label: "ROC-AUC (unseen generator B)", value: 0.7237 },
-    { label: "PR-AUC (held-out assets)", value: 0.5531 },
-    { label: "Precision @ 0.36", value: 0.6592 },
-    { label: "Recall @ 0.36", value: 0.4142 },
-    { label: "Brier score (lower is better)", value: 0.1099 },
-    { label: "Calibration error ECE", value: 0.0165 },
-  ],
-  ceiling: { auc: 0.7592, share: 0.983 },
-  baselines: [
-    { name: "M1 (ours)", auc: 0.7548, ours: true },
-    { name: "B3 Logistic regression", auc: 0.7572 },
-    { name: "B1 CVSS score only", auc: 0.6525 },
-    { name: "B2 Known-exploited flag only", auc: 0.6075 },
-  ],
-  bands: { low: 7.8, medium: 14.62, high: 44.84 },
+  version: "",
+  estimator: "",
+  calibration: "",
+  explain: "",
+  features: 0,
+  rows: "",
+  realData: "Real CISA CSAF OT advisories, CISA KEV and FIRST EPSS (snapshot)",
+  labels: "",
+  threshold: 0,
+  metrics: [] as { label: string; value: number }[],
+  ceiling: { auc: 0, share: 0 },
+  baselines: [] as { name: string; auc: number; ours?: boolean }[],
+  bands: bandThresholds,
+  caveats: [] as string[],
 }
 
+function rebuildModel() {
+  const i = modelInfo.raw
+  if (!i) return
+  const m = i.metrics ?? {}
+  const g = m.evaluations?.A_grouped ?? {}
+  const t = m.evaluations?.A_time ?? {}
+  const b = m.evaluations?.B_all ?? {}
+  const md = i.metadata ?? {}
+  const num = (x: unknown) => (typeof x === "number" ? x : NaN)
+  Object.assign(MODEL, {
+    version: i.model_version,
+    estimator: md.config?.estimator === "hgb_monotonic" ? `Gradient-boosted trees (HistGradientBoosting, monotonic), depth ${md.config.max_depth}, ${md.config.max_iter} rounds` : String(md.config?.estimator ?? "unknown"),
+    calibration: `${m.calibration?.method ?? md.calibration?.method ?? "unknown"} calibration · ECE ${num(m.calibration?.ece_before).toFixed?.(4)} → ${num(m.calibration?.ece_after).toFixed?.(4)}`,
+    explain: typeof i.shap === "string" ? i.shap : "SHAP TreeExplainer on the uncalibrated base model (log-odds)",
+    features: Array.isArray(i.features) ? i.features.length : 0,
+    rows: md.training_data ? `${md.training_data.rows_train ?? "?"} training rows from ${md.training_data.file}` : "see metadata.json",
+    labels: m.labels?.note ?? m.labels?.source ?? "Synthetic compromise labels (simulated data)",
+    threshold: num(g.M1?.threshold),
+    metrics: [
+      { label: "ROC-AUC (held-out assets)", value: num(g.M1?.roc_auc) },
+      { label: "ROC-AUC (future time window)", value: num(t.M1?.roc_auc) },
+      { label: "ROC-AUC (unseen generator B)", value: num(b.M1?.roc_auc) },
+      { label: "PR-AUC (held-out assets)", value: num(g.M1?.pr_auc) },
+      { label: `Precision @ ${num(g.M1?.threshold)}`, value: num(g.M1?.precision_at_threshold) },
+      { label: `Recall @ ${num(g.M1?.threshold)}`, value: num(g.M1?.recall_at_threshold) },
+      { label: "Brier score (lower is better)", value: num(g.M1?.brier) },
+      { label: "Calibration error ECE", value: num(g.M1?.ece) },
+    ],
+    ceiling: { auc: num(m.accuracy_ceiling?.O2_observable_oracle_plus_telemetry?.roc_auc), share: num(m.accuracy_ceiling?.M1_share_of_O2_roc_auc_above_chance) },
+    baselines: [
+      { name: "M1 (ours)", auc: num(g.M1?.roc_auc), ours: true },
+      { name: "B3 Logistic regression", auc: num(g.B3_logistic?.roc_auc) },
+      { name: "B1 CVSS score only", auc: num(g.B1_cvss_only?.roc_auc) },
+      { name: "B2 Known-exploited flag only", auc: num(g.B2_known_exploited?.roc_auc) },
+    ],
+    caveats: Array.isArray(i.caveats) ? i.caveats : [],
+  })
+}
+
+/* ---------- platform facts ---------- */
+
 export const AGENTS = [
-  { name: "Intake", does: "Reads a CERT-In / CISA advisory, extracts CVEs and products, matches them to the asset inventory. Treats advisory text as data (prompt-injection guard).", out: "Matched findings" },
+  { name: "Intake", does: "Reads a CISA / CERT-In advisory, extracts CVEs and products, matches them to the asset inventory. Treats advisory text as data (prompt-injection guard).", out: "Matched findings" },
   { name: "Risk", does: "Scores each asset: M1 compromise likelihood × operational impact, with the SHAP 'why' and a trend forecast.", out: "Risk score + reasons" },
   { name: "Cascade", does: "Walks the attested cross-organisation dependency graph to estimate which services degrade next and how fast.", out: "Cascade chain + sealed alerts" },
   { name: "Planner", does: "Proposes preventive actions (patch, segment, access control, monitoring) that respect maintenance windows, with predicted risk reduction.", out: "Remediation plan" },
@@ -172,8 +282,8 @@ export const PRIVACY = [
 ]
 
 export const QUALITY = [
-  { label: "Backend tests passing", value: "193" },
-  { label: "Smart-contract tests passing", value: "168" },
-  { label: "End-to-end demo checks", value: "26 / 26" },
-  { label: "Detection rules", value: "D1–D6 + X1" },
+  { label: "Backend tests passing (last run)", value: "227 / 227" },
+  { label: "Agents verified end to end", value: "7 / 7" },
+  { label: "Smart contracts deployed", value: "6" },
+  { label: "Detection rules", value: "R1–R6 + exposure" },
 ]

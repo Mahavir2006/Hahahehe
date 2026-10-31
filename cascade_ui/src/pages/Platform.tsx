@@ -1,37 +1,14 @@
 import { useState } from "react"
-import { ArrowDown, Bot, FileText, Lock, UserCheck } from "lucide-react"
+import { Bot, FileText, Lock, UserCheck } from "lucide-react"
 import { Card, Tag } from "@/components/ui"
-import { AGENTS, CONTRACTS, PRIVACY, QUALITY } from "@/data/derive"
+import { AGENTS, chain, CONTRACTS, PRIVACY, QUALITY, traces } from "@/data/derive"
+import { useLive } from "@/data/live"
 
-// a small hash-chained ledger so every on-chain write visibly gets its own distinct hash
-function fakeHash(seed: string) {
-  let h = 2166136261
-  let out = ""
-  for (let r = 0; r < 8; r++) {
-    for (const ch of seed + r) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0
-    out += h.toString(16).padStart(8, "0")
-  }
-  return "0x" + out
-}
-const WRITES = [
-  ["OrgRegistry", "EncryptionKeySet", "WGEC"],
-  ["AttestationRegistry", "DependencyConfirmed", "WGEC ↔ Jal Board"],
-  ["AttestationRegistry", "RiskAttestationSubmitted", "commitment only"],
-  ["AuditLog", "CriticVerdictAnchored", "plan RP-4492"],
-  ["ApprovalGate", "ApprovalRequested", "RP-4492"],
-  ["ApprovalGate", "Approved", "RP-4492 · 2 of 2"],
-  ["AlertBus", "AlertPublished", "sealed → Jal Board"],
-  ["AuditLog", "BatchAnchored", "Merkle root of 12 traces"],
-]
-const ledger = WRITES.reduce<{ i: number; contract: string; event: string; subject: string; prev: string; hash: string }[]>((acc, [contract, event, subject], i) => {
-  const prev = acc[i - 1]?.hash ?? "0x" + "0".repeat(64)
-  acc.push({ i: i + 1, contract, event, subject, prev, hash: fakeHash(prev + contract + event + subject) })
-  return acc
-}, [])
 const short = (h: string) => `${h.slice(0, 10)}…${h.slice(-6)}`
 
 export default function Platform() {
   const [step, setStep] = useState(0)
+  useLive()
   const s = AGENTS[step]
   return (
     <div className="page">
@@ -65,12 +42,18 @@ export default function Platform() {
       </Card>
 
       <div className="grid-2">
-        <Card title="Six smart contracts" sub="Local Ethereum chain (Hardhat) — the shared, tamper-evident record between organisations">
+        <Card title="Six smart contracts" sub={`Local Hardhat chain ${chain.chainId} · ${chain.connected ? "connected" : "DISCONNECTED"} · block ${chain.block}`}>
           <ul className="contracts">
             {CONTRACTS.map((c) => (
               <li key={c.name}>
                 <code>{c.name}</code>
-                <span>{c.does}</span>
+                <span>
+                  {c.does}
+                  <small className="muted">
+                    {" "}
+                    {chain.contracts[c.name] ? `at ${short(chain.contracts[c.name])}` : "not deployed"}
+                  </small>
+                </span>
               </li>
             ))}
           </ul>
@@ -90,43 +73,40 @@ export default function Platform() {
         </Card>
       </div>
 
-      <Card title="Audit ledger" sub="Each write links to the previous hash and gets its own — change any entry and every later hash breaks">
+      <Card title="Live chain feed" sub={`Latest contract events on the local chain · ${chain.reassessments} risk reassessments · audit entries ${Object.entries(chain.auditLengths).map(([o, n]) => `${o} ${n}`).join(", ")}`}>
         <div className="table-wrap">
           <table className="tbl ledger">
             <thead>
               <tr>
-                <th>#</th>
+                <th>Block</th>
                 <th>Contract · event</th>
-                <th>Subject (public)</th>
-                <th className="hide-sm">Previous hash</th>
-                <th>Entry hash</th>
+                <th>Org</th>
+                <th>Transaction hash</th>
               </tr>
             </thead>
             <tbody>
-              {ledger.map((e) => (
-                <tr key={e.i}>
-                  <td>{e.i}</td>
+              {chain.events.map((e) => (
+                <tr key={e.tx + e.event}>
+                  <td>{e.block}</td>
                   <td>
                     <strong>{e.contract}</strong>
                     <small>{e.event}</small>
                   </td>
-                  <td>{e.subject}</td>
-                  <td className="hide-sm">
-                    <code>{short(e.prev)}</code>
-                  </td>
+                  <td>{e.org || "—"}</td>
                   <td>
-                    <code className="hash">{short(e.hash)}</code>
-                    <ArrowDown size={11} className="muted" aria-hidden />
+                    <code className="hash" title={e.tx}>
+                      {short(e.tx)}
+                    </code>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="muted small">Illustrative entries for the demo; the live system computes these from contract events on the local chain.</p>
+        <p className="muted small">Real transactions from /api/ps03/chain/live, refreshed every 8 s. Agent traces recorded: {traces.map((t) => `${t.org} ${t.count}`).join(" · ") || "none"}.</p>
       </Card>
 
-      <Card title="Built and tested" sub="From the CascadeShield repository">
+      <Card title="Built and tested" sub="Measured on this machine (pytest run and live agent run)">
         <div className="grid-stats four">
           {QUALITY.map((q) => (
             <div className="stat" key={q.label}>

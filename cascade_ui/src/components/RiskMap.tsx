@@ -2,6 +2,7 @@ import { memo, useMemo, useState } from "react"
 import { Maximize2, Minus, Plus } from "lucide-react"
 import { INDIA_PATH_D } from "@/data/indiaBoundary"
 import { assets, dependencies, downstreamOf, levelColor, sectorOf, type Asset } from "@/data/derive"
+import { useLive } from "@/data/live"
 
 /** Spread assets that share a city (e.g. Delhi NCR) around their centre so each marker is clickable. */
 function layout(list: Asset[]) {
@@ -40,7 +41,8 @@ export const RiskMap = memo(function RiskMap({
 }) {
   const [zoom, setZoom] = useState(1)
   const [hover, setHover] = useState<string | null>(null)
-  const pos = useMemo(() => layout(assets), [])
+  const v = useLive()
+  const pos = useMemo(() => layout(assets), [v])
   const focus = hover ?? selected
   const downstream = useMemo(() => (focus ? downstreamOf(focus) : new Set<string>()), [focus])
   const order = ["Low", "Medium", "High", "Critical"]

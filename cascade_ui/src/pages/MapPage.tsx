@@ -2,14 +2,14 @@ import { useState } from "react"
 import { useNav } from "@/app/nav"
 import { RiskMap } from "@/components/RiskMap"
 import { Card, Level } from "@/components/ui"
-import { assetById, cascadeChain, orgRisk, sectorOf } from "@/data/derive"
+import { assetById, cascadeChain, orgRisk, ranked, sectorOf } from "@/data/derive"
 
 export default function MapPage() {
   const { openAsset, focusAsset } = useNav()
   const [sector, setSector] = useState("All")
   const [minLevel, setMinLevel] = useState("All")
-  const [sel, setSel] = useState<string>(focusAsset ?? "PG-003")
-  const a = assetById.get(sel)!
+  const [sel, setSel] = useState<string>(focusAsset ?? ranked[0].id)
+  const a = assetById.get(sel) ?? ranked[0]
   const chain = cascadeChain(sel)
 
   return (
@@ -55,7 +55,7 @@ export default function MapPage() {
                     </button>
                     <small>
                       hop {c.depth} · {c.via}
-                      {c.kind === "potential" ? " · AI-inferred" : " · attested on-chain"}
+                      {c.kind === "potential" ? " · AI-inferred" : " · confirmed dependency"}
                     </small>
                   </div>
                 </li>
