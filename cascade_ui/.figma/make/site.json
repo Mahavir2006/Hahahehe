@@ -1,0 +1,10 @@
+{
+  "description": "Assess cyber risks across critical infrastructure with geospatial asset monitoring, cascade analysis, AI-guided remediation, and approval workflows for security teams.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
