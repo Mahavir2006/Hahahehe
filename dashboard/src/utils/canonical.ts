@@ -1,3 +1,4 @@
+import { getBytes, keccak256 as ethersKeccak256 } from 'ethers';
 /**
  * Canonical JSON and cryptographic utilities for CascadeShield (TypeScript).
  * This mirrors backend/common/crypto.py for cross-language verification.
@@ -114,8 +115,8 @@ export interface EIP712Domain {
  * Compute keccak256 hash.
  */
 async function keccak256(data: Uint8Array): Promise<Uint8Array> {
-  const hashBuffer = await crypto.subtle.digest({ name: 'SHA-3', length: 256 }, data);
-  return new Uint8Array(hashBuffer);
+  // Ethereum keccak256 (not WebCrypto SHA-3, which is a different function and not available in browsers)
+  return getBytes(ethersKeccak256(data));
 }
 
 /**
@@ -171,7 +172,7 @@ export async function eip712TypeHash(typeDefinition: string): Promise<Uint8Array
  * This is a placeholder; real implementation uses eth-abi encoding.
  */
 export async function eip712EncodeData(
-  typeHash: Uint8Array, 
+  _typeHash: Uint8Array, 
   _fields: Array<[string, string]>, 
   _values: unknown[]
 ): Promise<Uint8Array> {
@@ -185,7 +186,7 @@ export async function eip712EncodeData(
  */
 export async function eip712SignableHash(
   domain: EIP712Domain,
-  typeHash: Uint8Array,
+  _typeHash: Uint8Array,
   structData: Uint8Array
 ): Promise<Uint8Array> {
   const domainSep = await eip712DomainSeparator(domain);

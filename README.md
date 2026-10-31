@@ -39,85 +39,79 @@ CascadeShield implements the **D3COY PS-03** specification for cross-organisatio
 ### Installation
 
 ```bash
-# Install all dependencies
-make setup
-
-# Start local blockchain (in separate terminal)
-make chain
-
-# Deploy contracts
-make deploy
-
-# Run all tests
-make test
-
-# Run automated demo
-make demo
-
-# Verify specification compliance
-make verify-spec
+make setup              # Python + Node dependencies, contracts, data, model
 ```
 
-### Development
+### Run it
 
 ```bash
-# Start backend API
-cd backend && uvicorn api.main:app --reload
-
-# Start dashboard
-cd dashboard && npm run dev
-
-# Start Hardhat node
-make chain
+make demo               # 14-step end-to-end demo on its own local chain; exits 0 only if all 26 checks pass
 ```
+
+```bash
+python scripts/serve.py --headline   # chain + 3 org nodes + API on http://127.0.0.1:8000, headline advisory ingested
+```
+
+```bash
+cd dashboard && npm run dev          # dashboard on http://localhost:5173 (proxies /api to :8000)
+```
+
+The dashboard has seven views: risk overview (ranked assets, bands, trend), asset panel ("why": SHAP drivers,
+CVEs, what changed), infrastructure map with a "what if this service fails" cascade, plans and approvals
+(approve, execute), detections, audit and chain, and the model card. Switch the role (consortium admin or an
+org operator) in the header; an org operator only ever sees its own private data.
+
+### Test and verify
+
+```bash
+make test               # Hardhat contract tests + backend tests (unit, end-to-end on a live chain, API)
+```
+
+```bash
+make ml-all             # rebuild the ML data, retrain, evaluate; every number in docs/ML_REPORT.md
+```
+
+```bash
+make verify-spec        # requirement traceability
+```
+
+### Machine learning
+
+M1 predicts each asset's probability of compromise in the next 90 days (gradient boosting with monotonic
+constraints, calibrated, explained with SHAP); impact, final risk and the cascade stay deterministic. It is trained
+on simulated assets whose CVE context is real (CISA OT advisories, CISA KEV, NVD) and whose compromise labels are
+synthetic. See `docs/ML_REPORT.md` for every metric, `docs/ML_DECISIONS.md` for every choice, and
+`docs/LIMITATIONS.md` for what this does not show.
 
 ## Project Structure
 
 ```
 Decoy/
-├── AGENTS_AND_BLOCKCHAIN_SPEC.md   # Complete specification
-├── PROGRESS.md                     # Build progress tracker
-├── Makefile                        # Build commands
-├── requirements.txt                # Python dependencies
-├── .env.example                    # Environment template
-├── chain/                          # Smart contracts (Hardhat)
-│   ├── contracts/                  # 6 Solidity contracts
-│   ├── scripts/                    # Deploy & seed scripts
-│   └── test/                       # Hardhat tests
-├── backend/                        # Python backend
-│   ├── common/                     # Shared utilities
-│   │   ├── crypto.py              # Canonical JSON, EIP-712, Merkle
-│   │   ├── chain_client.py        # Web3 contract client
-│   │   ├── chain_writer.py        # Idempotent writes, nonce mgmt
-│   │   ├── event_indexer.py       # Blockchain event indexing
-│   │   └── audit_anchor.py        # Merkle batch anchoring
-│   ├── agents/                    # AI agents
-│   │   ├── intake_agent.py        # Advisory parsing + injection defense
-│   │   ├── risk_agent.py          # ML/heuristic risk scoring
-│   │   ├── cascade_agent.py       # Intra/cross-org cascade
-│   │   ├── planner_agent.py       # Constraint-based planning
-│   │   ├── critic_agent.py        # Plan validation
-│   │   ├── executor_agent.py      # Simulated execution
-│   │   └── base_agent.py          # Shared infrastructure
-│   ├── api/                       # FastAPI REST + SSE
-│   └── common/schemas.py          # Pydantic models
-├── dashboard/                      # React + Vite dashboard
-│   ├── src/
-│   └── package.json
-├── data/                          # Data generation
-│   ├── generate_dataset.py        # Deterministic dataset (seed 42)
-│   └── orgs/                      # Generated org data
-├── scripts/
-│   ├── run_demo.py               # 14-step automated demo
-│   └── verify_spec.py            # Traceability gate
-└── docs/                          # Generated documentation
+├── chain/                    Solidity contracts (6), Hardhat tests, deploy + seed scripts
+├── backend/
+│   ├── agents/               intake, risk, cascade, planner, critic, executor, orchestrator, org node runtime
+│   ├── api/main.py           FastAPI (org-scoped by X-Dev-Role)
+│   ├── common/               chain client + writer, sealed disclosures (sealed.py), audit, Merkle, events
+│   ├── graph/cascade.py      intra-org and cross-org cascade engines (deterministic)
+│   ├── risk/                 M1 features, training, inference, evaluation, detection rules D, trend M4, artifacts
+│   ├── system.py             wires chain, indexer and the three org nodes
+│   └── tests/                unit, end-to-end on a live chain, API
+├── dashboard/                React + Vite dashboard on the API
+├── data/
+│   ├── real/, real_extra/    CISA CSAF OT advisories, CISA KEV, FIRST EPSS, NVD (checksummed)
+│   ├── orgs/, advisories/    the three demo organisations and sample advisories
+│   ├── ml_population.py, label_process.py, telemetry.py, build_ml_dataset.py, ml/   M1 training data
+│   └── oracle_ceiling.py     accuracy-ceiling analysis
+├── evaluation/               offline evaluations: rigorous metrics, M3 leakage adversary, M4 backtest, sensitivity
+├── scripts/                  run_demo.py, serve.py, verify_spec.py, data fetch/build scripts
+└── docs/                     architecture, threat model, limitations, ML report and decisions, diagrams
 ```
 
 ## Key Features
 
 ### AI Agents
 - **Intake**: Parses messy advisories → structured findings with injection defense
-- **Risk**: Gradient-boosted scoring + SHAP explanations
+- **Risk**: calibrated, monotonic gradient-boosted likelihood (M1) x deterministic impact, SHAP explanations, band hysteresis
 - **Cascade**: Intra-org (NetworkX) + cross-org (on-chain attestations)
 - **Planner**: Constraint-satisfying remediation plans (maintenance windows, vendor signoff, dependencies)
 - **Critic**: Independent validation (10/10 adversarial test cases)

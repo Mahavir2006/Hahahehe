@@ -71,6 +71,15 @@ print("\n### Data\n")
 for g, v in man["generators"].items():
     print(f"- Generator {g}: {v['assets']} assets, {v['rows']} rows, positive rate {v['positive_rate']}, rows with a vulnerability {v['rows_with_vulnerability']}, rows known-exploited {v['rows_known_exploited']}, CVEs from type-matched advisories {v['cves_drawn_from_type_matched_advisories']}, from sector fallback {v['cves_drawn_from_sector_fallback']}, attack episodes {v['attack_episodes']}, leakage audit passed {v['leakage_audit']['passed']}.")
 
+    print(f"  KEV-enrichment CVEs drawn (generator {g}): {v.get('cves_drawn_from_kev_enrichment', 0)}.")
+
+ce = m.get("accuracy_ceiling")
+if ce:
+    print(f"\n### Accuracy ceiling (`data/oracle_ceiling.py`, {ce['test_rows']} held-out rows)\n\n| Model | ROC-AUC | PR-AUC |\n|---|---|---|")
+    for k in ("O1_observable_logit_oracle_no_telemetry", "O2_observable_oracle_plus_telemetry", "O3_true_probability_oracle", "M1"):
+        print(f"| {k} | {ce[k]['roc_auc']} | {ce[k]['pr_auc']} |")
+    print(f"\nM1 share of the reachable ceiling (O2) above chance: {ce['M1_share_of_O2_roc_auc_above_chance']}. {ce['note']}.")
+
 bt = m.get("band_thresholds")
 if bt:
     print(f"\n### Band thresholds (rule: {bt['rule']})\n\n| Boundary | Previous | Derived from M1 |\n|---|---|---|")
