@@ -126,18 +126,21 @@ export interface AssetPredictDetails {
 export class ApiError extends Error {}
 const ROLE = { "X-Dev-Role": "admin" }
 
-export async function api<T = any>(path: string, body?: unknown): Promise<T> {
+/** GET when body is undefined, POST otherwise. Slow actions (multi-day advance, audit checks) pass a longer timeout. */
+export async function api<T = any>(path: string, body?: unknown, timeoutMs = 30_000): Promise<T> {
   let res: Response
   try {
     res = await fetch(path, {
       method: body === undefined ? "GET" : "POST",
       headers: body === undefined ? ROLE : { ...ROLE, "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(timeoutMs),
     })
-  } catch {
-    throw new ApiError("backend unreachable")
+  } catch (e) {
+    throw new ApiError(e instanceof DOMException && e.name === "TimeoutError" ? `no answer within ${timeoutMs / 1000} s` : "backend unreachable")
   }
+  // the dev proxy answers 502/504 when the backend process is down
+  if (res.status === 502 || res.status === 504) throw new ApiError("backend unreachable")
   const text = await res.text()
   const data = text ? JSON.parse(text) : null
   if (!res.ok) {
@@ -316,13 +319,12 @@ async function loadAll() {
       return { o, inv, att, services, changes, history }
     }),
   )
-  const [det, cross, info, chainStatus, chainLive, traceList] = await Promise.all([
+  const [det, cross, info, chainStatus, chainLive] = await Promise.all([
     api("/api/ps03/detections"),
     api("/api/cross-org/graph"),
     api("/api/ps03/model/info"),
     api("/api/chain/status"),
     api("/api/ps03/chain/live?limit=12"),
-    api<any[]>("/api/traces").catch(() => []),
   ])
 
   // inventory + scores
@@ -346,8 +348,8 @@ async function loadAll() {
         type: a.type,
         exposure: a.internet_exposed ? "Internet-facing" : `${a.zone} network`,
         vulnerability: vulns.length ? (vulns.length > 1 ? `${vulns[0].cve} +${vulns.length - 1}` : vulns[0].cve) : "Patched",
-        likelihood: Math.round((s.likelihood ?? 0) * 100),
-        impact: Math.round((s.impact ?? 0) * 100),
+        likelihood: Math.round((s.likelihood ?? 0) * 1000) / 10,
+        impact: Math.round((s.impact ?? 0) * 1000) / 10,
         risk: s.risk ?? 0,
         level: sev(s.band ?? "low"),
         x: p.x,
@@ -460,9 +462,15 @@ async function loadAll() {
     events: chainLive.events ?? [],
     reassessments: chainLive.reassessments ?? 0,
   })
-  const counts = new Map<string, number>()
-  for (const t of traceList) counts.set(t.org, (counts.get(t.org) ?? 0) + 1)
-  replace(traces, [...counts].map(([org, count]) => ({ org, count })))
+  // trace counts come from a slow endpoint; load them in the background so they never hold up a refresh
+  api<any[]>("/api/traces")
+    .then((traceList) => {
+      const counts = new Map<string, number>()
+      for (const t of traceList) counts.set(t.org, (counts.get(t.org) ?? 0) + 1)
+      replace(traces, [...counts].map(([org, count]) => ({ org, count })))
+      bump()
+    })
+    .catch(() => {})
 
   replace(assets, newAssets)
   assetById.clear()
@@ -479,12 +487,14 @@ export function refresh(): Promise<void> {
   if (loading) return loading
   sim.refreshing = true
   bump()
+  const before = new Map(assets.map((a) => [a.id, a.risk]))
   loading = loadAll()
     .then(() => {
       sim.error = ""
       sim.lastUpdate = new Date().toLocaleTimeString()
-      // explanations stream in afterwards, highest risk first, without blocking the pages
-      queueMicrotask(() => loadExplanations([...assets].sort((x, y) => y.risk - x.risk).map((a) => a.id)))
+      // explanations stream in afterwards, highest risk first, only for assets that are new or whose score moved
+      const stale = [...assets].filter((a) => !predictMap.has(a.id) || before.get(a.id) !== a.risk).sort((x, y) => y.risk - x.risk)
+      if (stale.length) queueMicrotask(() => loadExplanations(stale.map((a) => a.id)))
     })
     .catch((e) => {
       sim.error = e instanceof Error ? e.message : String(e)
@@ -528,6 +538,8 @@ export function startPolling(ms = 8000) {
 /** Run an action against the backend, then reload the data so every page reflects it. */
 export async function mutate<T>(fn: () => Promise<T>): Promise<T> {
   const r = await fn()
+  // a refresh that started before the action would show pre-action data: wait for it, then load again
+  if (loading) await loading.catch(() => {})
   await refresh().catch(() => {})
   return r
 }

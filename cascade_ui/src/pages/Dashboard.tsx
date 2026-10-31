@@ -16,7 +16,7 @@ export default function Dashboard() {
       <div className="grid-stats">
         <Stat label="Portfolio risk (avg)" value={portfolio.avgRisk.toFixed(1)} hint={`${portfolio.total} monitored assets`} tone="#f0a04b" />
         <Stat label="Need urgent attention" value={portfolio.urgent} hint={`High or Critical band (risk > ${THRESHOLDS.high.toFixed(1)})`} tone="#ef5b5b" />
-        <Stat label="Known-exploited CVEs" value={portfolio.kev} hint="listed in CISA KEV" tone="#ef5b5b" />
+        <Stat label="Known-exploited exposure" value={portfolio.kev} hint="assets with a CVE on the CISA KEV list" tone="#ef5b5b" />
         <Stat label="Internet-facing assets" value={portfolio.internet} hint={`${portfolio.unpatched} assets with open vulnerabilities`} tone="#e3c55a" />
         <Stat label="Can trigger a cascade" value={portfolio.cascadeSources} hint="reach 2+ downstream assets" tone="#38bdf8" />
       </div>

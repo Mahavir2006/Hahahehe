@@ -10,6 +10,7 @@ export function AssetPanel({ id, onClose }: { id: string | null; onClose: () => 
   const ref = useRef<HTMLElement>(null)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [sending, setSending] = useState(false)
+  const inFlight = useRef(false)
 
   useEffect(() => {
     if (!a) return
@@ -45,15 +46,17 @@ export function AssetPanel({ id, onClose }: { id: string | null; onClose: () => 
   const maxBp = Math.max(1, ...p.shapFactors.map((f) => Math.abs(f.bpDelta)))
   const backendOrg = BACKEND_ORG[a.org]
   const send = async () => {
+    if (inFlight.current) return
+    inFlight.current = true
     setSending(true)
     try {
       const pc = await api("/api/ps03/containment/precheck", { org: backendOrg, actions: chosen.map((x) => ({ action: x.code, targets: [a.id] })) })
       if (!pc.ok) {
-        toast("Safety precheck blocked the plan", (pc.blocking ?? []).join("; ").slice(0, 300), "warn")
+        toast("Safety precheck blocked the plan", (pc.blocking ?? []).map((b: string) => b.replace(/[[\]']/g, "")).join(" · ").slice(0, 320), "warn")
         return
       }
       if (chosen.some((x) => x.code === "ISOLATE_ASSET")) {
-        const r = await mutate(() => api("/api/ps03/containment/level2", { org: backendOrg, asset_id: a.id }))
+        const r = await mutate(() => api("/api/ps03/containment/level2", { org: backendOrg, asset_id: a.id }, 120_000))
         toast("Quarantine plan sent for human approval", `${r.plan_id} · Critic: ${r.critic?.verdict ?? "?"} · approve it under Recommendations → Human approvals`)
       } else {
         toast("Safety precheck passed", `${(pc.warnings ?? []).length} warning(s). Only containment level 2 (quarantine) can be submitted from the UI; other actions are planned by the agents when an advisory arrives.`, "ok")
@@ -61,6 +64,7 @@ export function AssetPanel({ id, onClose }: { id: string | null; onClose: () => 
     } catch (e) {
       toast("Request failed", e instanceof Error ? e.message : String(e), "warn")
     } finally {
+      inFlight.current = false
       setSending(false)
     }
   }

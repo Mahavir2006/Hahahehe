@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { CheckCircle2, Hand, Link2, Lock, Play, XCircle } from "lucide-react"
 import { useNav } from "@/app/nav"
@@ -24,7 +24,7 @@ function AuditIntegrity() {
     // one organisation at a time: each check re-hashes every entry against the chain (~15 s)
     for (const o of ORGS) {
       setRes((s) => ({ ...s, [o]: { checking: true } }))
-      const once = () => api(`/api/audit/verify?org=${o}`).catch((e) => ({ error: String(e.message ?? e) }))
+      const once = () => api(`/api/audit/verify?org=${o}`, undefined, 90_000).catch((e) => ({ error: String(e.message ?? e) }))
       let r = await once()
       // live mode keeps writing; a write landing mid-check looks like a mismatch, so re-check once before alarming
       if (!r.ok && !r.error) r = { ...(await once()), rechecked: true }
@@ -310,7 +310,10 @@ function Brake() {
   const st = useApi("/api/chain/status", 6_000)
   const [busy, setBusy] = useState(false)
   const paused = !!st.data?.paused
+  const inFlight = useRef(false)
   const flip = async () => {
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     try {
       await api(paused ? "/api/admin/resume" : "/api/admin/pause", {})
@@ -318,6 +321,7 @@ function Brake() {
     } catch (e) {
       toast("Failed", e instanceof Error ? e.message : String(e), "warn")
     } finally {
+      inFlight.current = false
       setBusy(false)
       st.reload()
     }
@@ -325,7 +329,7 @@ function Brake() {
   return (
     <Card title="Emergency brake" sub="Admin can freeze every blockchain write; pending writes wait in a queue">
       <div className="brake">
-        <button className={`switch ${paused ? "on" : ""}`} role="switch" aria-checked={paused} disabled={busy || !st.data} onClick={flip}>
+        <button className={`switch ${paused ? "on" : ""}`} role="switch" aria-checked={paused} aria-label="Pause all blockchain writes" disabled={busy || !st.data} onClick={flip}>
           <span />
         </button>
         <div>

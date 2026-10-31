@@ -130,7 +130,8 @@ export function Toaster() {
     push = (t) => {
       const id = ++seq
       setItems((xs) => [...xs.slice(-3), { ...t, id }])
-      setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), 4200)
+      // warnings carry reasons people need to read; give them longer
+      setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), t.tone === "warn" ? 10_000 : 5_000)
     }
   }, [])
   return (

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Check, RotateCcw, Play, X } from "lucide-react"
 import { api, mutate } from "@/data/live"
 import { Card, EmptyState, Tag, toast } from "./ui"
@@ -38,6 +38,7 @@ export function Approvals() {
   const [done, setDone] = useState<Record<string, "executed" | "rolled back">>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState("")
+  const inFlight = useRef(false) // one vote/execute at a time, even on fast double clicks
 
   const load = useCallback(async () => {
     try {
@@ -57,6 +58,8 @@ export function Approvals() {
   }, [load])
 
   const run = async (key: string, label: string, fn: () => Promise<unknown>, after?: () => void) => {
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(key)
     try {
       await mutate(fn)
@@ -65,6 +68,7 @@ export function Approvals() {
     } catch (e) {
       toast(`${label} failed`, e instanceof Error ? e.message : String(e), "warn")
     } finally {
+      inFlight.current = false
       setBusy(null)
       load()
     }
@@ -109,7 +113,7 @@ export function Approvals() {
                           <Check size={11} /> approver {i + 1}
                         </Tag>
                       ) : (
-                        <button key={v.approver} className="btn btn-primary" disabled={busy !== null} onClick={() => run(p.plan_id, `Approver ${i + 1} approved ${p.plan_id}`, () => api(`/api/approvals/${r.request_id}/approve`, { org: p.org, approver: i }))}>
+                        <button key={v.approver} className="btn btn-primary" disabled={busy !== null} onClick={() => run(p.plan_id, `Approver ${i + 1} approved ${p.plan_id}`, () => api(`/api/approvals/${r.request_id}/approve`, { org: p.org, approver: i }, 120_000))}>
                           Approve as {i + 1}
                           {v.safety_officer ? " (safety)" : ""}
                         </button>
@@ -121,12 +125,12 @@ export function Approvals() {
                     </button>
                   )}
                   {approved && state !== "executed" && (
-                    <button className="btn btn-ok" disabled={busy !== null} onClick={() => run(p.plan_id, `Executor ran ${p.plan_id}`, () => api(`/api/plans/${p.plan_id}/execute`, { request_id: r.request_id }), () => setDone((d) => ({ ...d, [p.plan_id]: "executed" })))}>
+                    <button className="btn btn-ok" disabled={busy !== null} onClick={() => run(p.plan_id, `Executor ran ${p.plan_id}`, () => api(`/api/plans/${p.plan_id}/execute`, { request_id: r.request_id }, 120_000), () => setDone((d) => ({ ...d, [p.plan_id]: "executed" })))}>
                       <Play size={13} /> Execute
                     </button>
                   )}
                   {(state === "executed" || (!r && state !== "rolled back")) && (
-                    <button className="btn btn-ghost" disabled={busy !== null} onClick={() => run(p.plan_id, `Rolled back ${p.plan_id}`, () => api(`/api/plans/${p.plan_id}/rollback`, {}), () => setDone((d) => ({ ...d, [p.plan_id]: "rolled back" })))}>
+                    <button className="btn btn-ghost" disabled={busy !== null} onClick={() => run(p.plan_id, `Rolled back ${p.plan_id}`, () => api(`/api/plans/${p.plan_id}/rollback`, {}, 120_000), () => setDone((d) => ({ ...d, [p.plan_id]: "rolled back" })))}>
                       <RotateCcw size={13} /> Roll back
                     </button>
                   )}

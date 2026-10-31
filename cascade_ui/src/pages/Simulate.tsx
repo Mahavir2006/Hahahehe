@@ -72,6 +72,7 @@ function AdvisoryRun() {
   const [guard, setGuard] = useState<any[]>([])
   const events = useRef<StreamEv[]>([])
   const [, force] = useState(0)
+  const inFlight = useRef(false) // blocks double submits before React re-renders the disabled button
 
   useEffect(() => {
     const es = new EventSource("/api/stream")
@@ -87,11 +88,13 @@ function AdvisoryRun() {
   }, [])
 
   const run = async () => {
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     setResult(null)
     setReveal(0)
     try {
-      const r = await mutate(() => api<Record<string, any>>("/api/advisories", { text, source: "ui" }))
+      const r = await mutate(() => api<Record<string, any>>("/api/advisories", { text, source: "ui" }, 120_000))
       setResult(r)
       const adv = await api<any[]>("/api/advisories")
       const pid = Object.values(r)[0]?.pipeline_id
@@ -102,6 +105,7 @@ function AdvisoryRun() {
     } catch (e) {
       toast("Advisory rejected", e instanceof Error ? e.message : String(e), "warn")
     } finally {
+      inFlight.current = false
       setBusy(false)
     }
   }
@@ -126,7 +130,7 @@ function AdvisoryRun() {
     <Card title="1 · Send an advisory to the AI agents" sub="Pick a sample or paste your own. Watch each organisation's agents handle it, stage by stage.">
       <div className="chips-row">
         {SAMPLES.map((s) => (
-          <button key={s.name} className={`chip ${text === s.text ? "on" : ""}`} onClick={() => setText(s.text)}>
+          <button key={s.name} className={`chip ${text === s.text ? "on" : ""}`} aria-pressed={text === s.text} onClick={() => setText(s.text)}>
             {s.name}
           </button>
         ))}
@@ -171,27 +175,35 @@ function TimeMachine() {
   useLive()
   const [busy, setBusy] = useState(false)
   const [last, setLast] = useState<any>(null)
+  const inFlight = useRef(false)
   const go = async (path: string, body: unknown, label: string) => {
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     try {
-      const r = await mutate(() => api(path, body))
+      const r = await mutate(() => api(path, body, 180_000))
       setLast(r)
       toast(label, r?.to_day !== undefined ? `now day ${r.to_day}` : undefined)
     } catch (e) {
       toast(`${label} failed`, e instanceof Error ? e.message : String(e), "warn")
     } finally {
+      inFlight.current = false
       setBusy(false)
     }
   }
-  const bars = useMemo(
-    () =>
-      (last?.changes ?? [])
-        .map((c: any) => ({ id: c.asset_id.replace("-asset-", " "), delta: (c.to_risk_bp - c.from_risk_bp) / 100 }))
-        .filter((c: any) => Math.abs(c.delta) >= 0.5)
-        .sort((a: any, b: any) => Math.abs(b.delta) - Math.abs(a.delta))
-        .slice(0, 10),
-    [last],
-  )
+  const bars = useMemo(() => {
+    // an asset can be re-scored several times in one day; chart its net change (first "from" to last "to")
+    const net = new Map<string, { from: number; to: number }>()
+    for (const c of last?.changes ?? []) {
+      const n = net.get(c.asset_id)
+      net.set(c.asset_id, { from: n ? n.from : c.from_risk_bp, to: c.to_risk_bp })
+    }
+    return [...net]
+      .map(([id, n]) => ({ id: id.replace("-asset-", " "), delta: (n.to - n.from) / 100 }))
+      .filter((c) => Math.abs(c.delta) >= 0.5)
+      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+      .slice(0, 10)
+  }, [last])
   return (
     <Card title="2 · Time machine" sub="Move the simulated clock and see whose risk moved and why">
       <div className="tm">
@@ -200,7 +212,7 @@ function TimeMachine() {
           <strong>Day {sim.day}</strong>
           <small>{sim.date}</small>
         </div>
-        <div className="tm-btns">
+        <div className="tm-btns" aria-busy={busy}>
           <button className="btn" disabled={busy} onClick={() => go("/api/ps03/sim/advance", { days: 1 }, "Advanced 1 day")}>
             <FastForward size={14} /> +1 day
           </button>
@@ -212,6 +224,7 @@ function TimeMachine() {
           </button>
         </div>
       </div>
+      {busy && <p className="muted small" role="status">Working… each simulated day re-scores every asset and writes to the blockchain, so 7 days can take about half a minute.</p>}
       {last && (
         <>
           <p className="muted small">
@@ -345,7 +358,7 @@ function Containment() {
       </ol>
       <div className="chips-row">
         {ORGS.map((o) => (
-          <button key={o} className={`chip ${org === o ? "on" : ""}`} onClick={() => setOrg(o)}>
+          <button key={o} className={`chip ${org === o ? "on" : ""}`} aria-pressed={org === o} onClick={() => setOrg(o)}>
             {sectorOf[ORG_CODE[o]].label}
           </button>
         ))}
