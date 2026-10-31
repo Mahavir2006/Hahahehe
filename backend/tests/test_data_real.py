@@ -50,7 +50,7 @@ def test_manifest_verifies_and_detects_tampering(snapshot):
 @pytest.mark.req("DATA-REAL-01")
 def test_crlf_checkout_still_verifies_but_missing_manifest_raises(snapshot):
     p = snapshot / "kev.jsonl"
-    p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
+    p.write_bytes(p.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))  # works whether checked out LF or CRLF
     load_kev(snapshot)
     (snapshot / "MANIFEST.json").unlink()
     with pytest.raises(SnapshotIntegrityError, match="manifest"):
