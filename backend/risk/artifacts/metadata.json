@@ -1,5 +1,5 @@
 {
-  "model_version": "523aa67236af48e7",
+  "model_version": "fa1a23ab35cdb78d",
   "features": [
     "internet_exposed",
     "cvss_base",
@@ -13,12 +13,12 @@
     "supply_chain_flag"
   ],
   "metrics": {
-    "auc": 0.8868460249487992,
-    "precision": 0.746268656716418,
-    "recall": 0.5725190839694656,
+    "auc": 0.8978945349156726,
+    "precision": 0.7453703703703703,
+    "recall": 0.6168582375478927,
     "n_train": 4000,
     "n_test": 1000,
-    "positive_rate": 0.2616
+    "positive_rate": 0.2614
   },
   "seed": 42,
   "data": "synthetic (data/historical_incidents.csv)"
