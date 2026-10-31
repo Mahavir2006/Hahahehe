@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useNav } from "@/app/nav"
+import { MapInfo } from "@/components/MapInfo"
 import { RiskMap } from "@/components/RiskMap"
 import { Card, Level } from "@/components/ui"
 import { assetById, cascadeChain, orgRisk, sectorOf } from "@/data/derive"
@@ -9,6 +10,7 @@ export default function MapPage() {
   const [sector, setSector] = useState("All")
   const [minLevel, setMinLevel] = useState("All")
   const [sel, setSel] = useState<string>(focusAsset ?? "PG-003")
+  const [cardOpen, setCardOpen] = useState(false)
   const a = assetById.get(sel)!
   const chain = cascadeChain(sel)
 
@@ -32,8 +34,14 @@ export default function MapPage() {
       </div>
 
       <div className="grid-map">
-        <Card className="map-card">
-          <RiskMap selected={sel} onSelect={setSel} sector={sector} minLevel={minLevel} />
+        <Card className="map-wrap">
+          <RiskMap
+            selected={sel}
+            onSelect={(id) => (id ? (setSel(id), setCardOpen(true)) : setCardOpen(false))}
+            sector={sector}
+            minLevel={minLevel}
+            info={cardOpen ? (x) => <MapInfo a={x} onDetails={() => openAsset(x.id)} /> : undefined}
+          />
         </Card>
         <Card title={`${a.id} · ${a.name}`} sub={`${sectorOf[a.org].label} · ${a.type} · ${a.location}`}>
           <div className="mini-score">

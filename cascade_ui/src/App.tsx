@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Bell, Menu, Search, Shield, X } from "lucide-react"
+import { Bell, Menu, Moon, Search, Shield, Sun, X } from "lucide-react"
 import { NavContext, PAGES, type PageId } from "@/app/nav"
 import { AssetPanel } from "@/components/AssetPanel"
 import { ErrorBoundary, PageSkeleton, Toaster } from "@/components/ui"
@@ -20,6 +20,16 @@ export default function App() {
   const [query, setQuery] = useState("")
   const [searchOpen, setSearchOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
+  const [theme, setTheme] = useState<"dark" | "light">(() => (document.documentElement.dataset.theme === "light" ? "light" : "dark"))
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    try {
+      localStorage.setItem("cs-theme", theme)
+    } catch {
+      /* storage blocked: theme still applies for this visit */
+    }
+  }, [theme])
 
   useEffect(() => {
     const onHash = () => setRoute(readHash())
@@ -132,6 +142,9 @@ export default function App() {
         <span className="sim-pill" title="Asset data in this UI is simulated for the demo">
           Simulated data
         </span>
+        <button className="icon-btn" aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
+          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
         <button className="icon-btn" aria-label={`${critical.length} critical alerts`} aria-expanded={alertsOpen} onClick={() => setAlertsOpen((v) => !v)}>
           <Bell size={18} />
           <span className="dot">{critical.length}</span>
@@ -159,9 +172,9 @@ export default function App() {
 
       {/* hamburger menu: sliding navigation drawer */}
       <div className={`scrim ${menuOpen ? "show" : ""}`} onClick={() => setMenuOpen(false)} aria-hidden />
-      <nav className={`menu ${menuOpen ? "open" : ""}`} aria-label="Main" aria-hidden={!menuOpen} inert={!menuOpen}>
+      <nav className={`menu glass-strong ${menuOpen ? "open" : ""}`} aria-label="Main" aria-hidden={!menuOpen} inert={!menuOpen}>
         <div className="menu-head">
-          <strong>Navigate</strong>
+          <strong>Menu</strong>
           <button className="icon-btn" aria-label="Close menu" onClick={() => setMenuOpen(false)}>
             <X size={18} />
           </button>
@@ -178,24 +191,8 @@ export default function App() {
         <p className="menu-foot">PS-03 · AI-based critical infrastructure cyber-risk prediction. Demo data is simulated.</p>
       </nav>
 
-      {/* desktop: compact page tabs under the top bar */}
-      <div className="tabs-bar" role="tablist" aria-label="Pages">
-        {PAGES.map((p) => (
-          <button key={p.id} role="tab" aria-selected={p.id === page} className={p.id === page ? "active" : ""} onClick={() => go(p.id)} onMouseEnter={() => p.load()}>
-            <p.icon size={15} aria-hidden /> {p.label}
-          </button>
-        ))}
-      </div>
-
-      <main id="main" className="main">
-        <div className="page-head">
-          <div>
-            <span className="crumb">CascadeShield / {def.label}</span>
-            <h1>{def.label}</h1>
-            <p>{def.blurb}</p>
-          </div>
-          <span className="objective">PS-03 · {def.objective}</span>
-        </div>
+      <main id="main" className={`main ${page === "dashboard" ? "main-home" : ""}`}>
+        <h1 className="sr-only">{def.label}</h1>
         <ErrorBoundary resetKey={page}>
           <Suspense fallback={<PageSkeleton />}>
             <Page />
