@@ -1,0 +1,70 @@
+{
+  "seed": 42,
+  "row_definition": "one asset in one 90-day window; features as of the window start t",
+  "epss_source": "proxy",
+  "files": {
+    "episodes_a.csv": {
+      "sha256": "77507139af6a1219dad6309ae6b0aee63ffe6b2e8dfeebe998b38c408a7c7cf6"
+    },
+    "episodes_b.csv": {
+      "sha256": "c1b737c8ade5638b621b7815cbda3be87827efbe6d469bfad5f6c49cbb2c8267"
+    },
+    "gen_a.csv": {
+      "sha256": "6afa0633b4f723a7d533f7c6de3ec6853aaf36da6489b2503b8aad856a92f5b3"
+    },
+    "gen_b.csv": {
+      "sha256": "502b2095b9f932f732c00ae7e507be7962cee6cc5af6bc16b971961801e8e660"
+    },
+    "rules_eval.json": {
+      "sha256": "69cbbf894bc5964b9ef49cc37b26f5e3021cf0f54cd2b48f71eaf186c79175c4"
+    },
+    "telemetry_a.csv.gz": {
+      "sha256": "82a061ee8a8e6e2cd5e213627e5fafaf432e96b16c7f1d057f4915590229dd6d"
+    },
+    "telemetry_b.csv.gz": {
+      "sha256": "d64786a89b251cd5555aecacda7cc92d940aa801af17f74bc01a71d8e422effe"
+    }
+  },
+  "generators": {
+    "A": {
+      "assets": 2000,
+      "rows": 16000,
+      "positive_rate": 0.1687,
+      "cves_drawn_from_type_matched_advisories": 506,
+      "cves_drawn_from_sector_fallback": 2425,
+      "rows_with_vulnerability": 3112,
+      "rows_known_exploited": 54,
+      "attack_episodes": 1352,
+      "leakage_audit": {
+        "passed": true,
+        "problems": [],
+        "checks": [
+          "feature constant within a label class",
+          "feature perfectly separates classes",
+          "CVE release / KEV date-added after t",
+          "telemetry day outside [t-30, t)"
+        ]
+      }
+    },
+    "B": {
+      "assets": 800,
+      "rows": 6400,
+      "positive_rate": 0.1702,
+      "cves_drawn_from_type_matched_advisories": 251,
+      "cves_drawn_from_sector_fallback": 858,
+      "rows_with_vulnerability": 1225,
+      "rows_known_exploited": 21,
+      "attack_episodes": 343,
+      "leakage_audit": {
+        "passed": true,
+        "problems": [],
+        "checks": [
+          "feature constant within a label class",
+          "feature perfectly separates classes",
+          "CVE release / KEV date-added after t",
+          "telemetry day outside [t-30, t)"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,242 @@
+{
+  "asset_type_code": {
+    "type": "categorical",
+    "min": 0,
+    "max": 18,
+    "group": "asset",
+    "source": "inventory",
+    "real_or_simulated": "simulated",
+    "description": "asset type, with an explicit 'unknown' level",
+    "monotone_increasing": false
+  },
+  "zone_ord": {
+    "type": "int",
+    "min": 0,
+    "max": 3,
+    "group": "asset",
+    "source": "inventory",
+    "real_or_simulated": "simulated",
+    "description": "IT=0, DMZ=1, OT=2, SAFETY=3",
+    "monotone_increasing": false
+  },
+  "criticality": {
+    "type": "int",
+    "min": 1,
+    "max": 5,
+    "group": "asset",
+    "source": "inventory",
+    "real_or_simulated": "simulated",
+    "description": "operator-assigned criticality",
+    "monotone_increasing": false
+  },
+  "safety_critical": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "asset",
+    "source": "inventory",
+    "real_or_simulated": "simulated",
+    "description": "safety-instrumented asset",
+    "monotone_increasing": false
+  },
+  "num_dependents": {
+    "type": "int",
+    "min": 0,
+    "max": 20,
+    "group": "asset",
+    "source": "dependency graph",
+    "real_or_simulated": "simulated",
+    "description": "assets that depend on this one",
+    "monotone_increasing": false
+  },
+  "supply_chain_flag": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "asset",
+    "source": "FirmwareRegistry check",
+    "real_or_simulated": "simulated",
+    "description": "firmware mismatch, unknown or revoked",
+    "monotone_increasing": true
+  },
+  "internet_exposed": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "asset",
+    "source": "inventory",
+    "real_or_simulated": "simulated",
+    "description": "reachable from the internet",
+    "monotone_increasing": true
+  },
+  "default_credentials": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "asset",
+    "source": "inventory",
+    "real_or_simulated": "simulated",
+    "description": "vendor default credentials in use",
+    "monotone_increasing": true
+  },
+  "open_mgmt_ports": {
+    "type": "int",
+    "min": 0,
+    "max": 10,
+    "group": "asset",
+    "source": "inventory",
+    "real_or_simulated": "simulated",
+    "description": "count of open management ports",
+    "monotone_increasing": true
+  },
+  "remote_access_enabled": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "asset",
+    "source": "inventory",
+    "real_or_simulated": "simulated",
+    "description": "vendor/remote access path enabled",
+    "monotone_increasing": false
+  },
+  "firmware_known": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "asset",
+    "source": "inventory",
+    "real_or_simulated": "simulated",
+    "description": "firmware version is known",
+    "monotone_increasing": false
+  },
+  "days_since_patch": {
+    "type": "int",
+    "min": 0,
+    "max": 2000,
+    "group": "asset",
+    "source": "inventory",
+    "real_or_simulated": "simulated",
+    "description": "days from last patch to t",
+    "monotone_increasing": true
+  },
+  "has_vulnerability": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "vulnerability",
+    "source": "CISA CSAF advisories",
+    "real_or_simulated": "real CVE context",
+    "description": "any known CVE affects the asset at t",
+    "monotone_increasing": false
+  },
+  "cve_count": {
+    "type": "int",
+    "min": 0,
+    "max": 20,
+    "group": "vulnerability",
+    "source": "CISA CSAF advisories",
+    "real_or_simulated": "real CVE context",
+    "description": "CVEs affecting the asset at t",
+    "monotone_increasing": false
+  },
+  "max_cvss": {
+    "type": "float",
+    "min": 0.0,
+    "max": 10.0,
+    "group": "vulnerability",
+    "source": "CISA CSAF advisories",
+    "real_or_simulated": "real",
+    "description": "max CVSS base score; 0 with has_vulnerability=0 or missing_cvss=1",
+    "monotone_increasing": true
+  },
+  "max_epss": {
+    "type": "float",
+    "min": 0.0,
+    "max": 1.0,
+    "group": "vulnerability",
+    "source": "proxy from CVSS + KEV",
+    "real_or_simulated": "proxy (EPSS not time-matched)",
+    "description": "max exploit-probability proxy",
+    "monotone_increasing": true
+  },
+  "any_known_exploited": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "vulnerability",
+    "source": "CISA KEV",
+    "real_or_simulated": "real",
+    "description": "a CVE was in KEV at t",
+    "monotone_increasing": true
+  },
+  "vuln_age_days": {
+    "type": "int",
+    "min": 0,
+    "max": 4000,
+    "group": "vulnerability",
+    "source": "CISA CSAF advisories",
+    "real_or_simulated": "real dates",
+    "description": "age of the oldest unpatched CVE at t",
+    "monotone_increasing": false
+  },
+  "missing_cvss": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "vulnerability",
+    "source": "feed status",
+    "real_or_simulated": "simulated gaps",
+    "description": "CVSS unavailable; max_cvss set to fallback 0",
+    "monotone_increasing": false
+  },
+  "missing_epss": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "vulnerability",
+    "source": "feed status",
+    "real_or_simulated": "simulated gaps",
+    "description": "EPSS unavailable; max_epss set to fallback 0",
+    "monotone_increasing": false
+  },
+  "failed_auth_count": {
+    "type": "int",
+    "min": 0,
+    "max": 5000,
+    "group": "telemetry",
+    "source": "detection rules D",
+    "real_or_simulated": "simulated telemetry",
+    "description": "failed logins over the 30 days before t",
+    "monotone_increasing": false
+  },
+  "new_remote_session_flag": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "telemetry",
+    "source": "detection rules D",
+    "real_or_simulated": "simulated telemetry",
+    "description": "rule D2 fired in the 30 days before t",
+    "monotone_increasing": false
+  },
+  "rule_hit_count": {
+    "type": "int",
+    "min": 0,
+    "max": 200,
+    "group": "telemetry",
+    "source": "detection rules D",
+    "real_or_simulated": "simulated telemetry",
+    "description": "active-attack rule hits in the 30 days before t",
+    "monotone_increasing": false
+  },
+  "high_severity_rule_hit": {
+    "type": "binary",
+    "min": 0,
+    "max": 1,
+    "group": "telemetry",
+    "source": "detection rules D",
+    "real_or_simulated": "simulated telemetry",
+    "description": "a high-severity rule fired",
+    "monotone_increasing": false
+  }
+}

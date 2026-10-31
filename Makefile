@@ -36,10 +36,14 @@ compile-contracts:
 	cd chain && npx hardhat compile
 
 generate-data:
-	cd data && python generate_dataset.py
+	python data/generate_dataset.py --output-dir data
+	python data/build_ml_dataset.py
 
 train-model:
-	cd backend && python -m risk.train_model
+	python -m backend.risk.train_model
+
+evaluate:
+	python -m backend.risk.evaluate_model
 
 # ============================================================================
 # CHAIN
@@ -61,7 +65,7 @@ test-chain:
 	cd chain && npx hardhat coverage
 
 test-backend:
-	cd backend && python -m pytest tests/ -v --tb=short -m "not live_llm"
+	python -m pytest backend/tests -v --tb=short -m "not live_llm"
 
 test-dashboard:
 	cd dashboard && npm test

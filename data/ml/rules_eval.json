@@ -1,0 +1,150 @@
+{
+  "A": {
+    "D1": {
+      "targets": "auth_bruteforce",
+      "windows": 16000,
+      "attack_windows": 262,
+      "fired_windows": 565,
+      "true_positives": 257,
+      "false_positives": 308,
+      "false_negatives": 5,
+      "precision": 0.4549,
+      "recall": 0.9809,
+      "false_positives_from_benign_anomalies": 308
+    },
+    "D2": {
+      "targets": "unexpected_remote",
+      "windows": 16000,
+      "attack_windows": 279,
+      "fired_windows": 905,
+      "true_positives": 267,
+      "false_positives": 638,
+      "false_negatives": 12,
+      "precision": 0.295,
+      "recall": 0.957,
+      "false_positives_from_benign_anomalies": 638
+    },
+    "D3": {
+      "targets": "lateral_movement",
+      "windows": 16000,
+      "attack_windows": 224,
+      "fired_windows": 208,
+      "true_positives": 206,
+      "false_positives": 2,
+      "false_negatives": 18,
+      "precision": 0.9904,
+      "recall": 0.9196,
+      "false_positives_from_benign_anomalies": 1
+    },
+    "D4": {
+      "targets": "abnormal_ot",
+      "windows": 16000,
+      "attack_windows": 150,
+      "fired_windows": 146,
+      "true_positives": 146,
+      "false_positives": 0,
+      "false_negatives": 4,
+      "precision": 1.0,
+      "recall": 0.9733,
+      "false_positives_from_benign_anomalies": 0
+    },
+    "D5": {
+      "targets": "unexpected_config",
+      "windows": 16000,
+      "attack_windows": 213,
+      "fired_windows": 523,
+      "true_positives": 211,
+      "false_positives": 312,
+      "false_negatives": 2,
+      "precision": 0.4034,
+      "recall": 0.9906,
+      "false_positives_from_benign_anomalies": 312
+    },
+    "D6": {
+      "targets": "exploit_indicator",
+      "windows": 16000,
+      "attack_windows": 154,
+      "fired_windows": 209,
+      "true_positives": 128,
+      "false_positives": 81,
+      "false_negatives": 26,
+      "precision": 0.6124,
+      "recall": 0.8312,
+      "false_positives_from_benign_anomalies": 81
+    }
+  },
+  "B": {
+    "D1": {
+      "targets": "auth_bruteforce",
+      "windows": 6400,
+      "attack_windows": 62,
+      "fired_windows": 196,
+      "true_positives": 61,
+      "false_positives": 135,
+      "false_negatives": 1,
+      "precision": 0.3112,
+      "recall": 0.9839,
+      "false_positives_from_benign_anomalies": 135
+    },
+    "D2": {
+      "targets": "unexpected_remote",
+      "windows": 6400,
+      "attack_windows": 62,
+      "fired_windows": 260,
+      "true_positives": 59,
+      "false_positives": 201,
+      "false_negatives": 3,
+      "precision": 0.2269,
+      "recall": 0.9516,
+      "false_positives_from_benign_anomalies": 201
+    },
+    "D3": {
+      "targets": "lateral_movement",
+      "windows": 6400,
+      "attack_windows": 55,
+      "fired_windows": 53,
+      "true_positives": 53,
+      "false_positives": 0,
+      "false_negatives": 2,
+      "precision": 1.0,
+      "recall": 0.9636,
+      "false_positives_from_benign_anomalies": 0
+    },
+    "D4": {
+      "targets": "abnormal_ot",
+      "windows": 6400,
+      "attack_windows": 40,
+      "fired_windows": 38,
+      "true_positives": 38,
+      "false_positives": 0,
+      "false_negatives": 2,
+      "precision": 1.0,
+      "recall": 0.95,
+      "false_positives_from_benign_anomalies": 0
+    },
+    "D5": {
+      "targets": "unexpected_config",
+      "windows": 6400,
+      "attack_windows": 52,
+      "fired_windows": 184,
+      "true_positives": 51,
+      "false_positives": 133,
+      "false_negatives": 1,
+      "precision": 0.2772,
+      "recall": 0.9808,
+      "false_positives_from_benign_anomalies": 133
+    },
+    "D6": {
+      "targets": "exploit_indicator",
+      "windows": 6400,
+      "attack_windows": 45,
+      "fired_windows": 83,
+      "true_positives": 40,
+      "false_positives": 43,
+      "false_negatives": 5,
+      "precision": 0.4819,
+      "recall": 0.8889,
+      "false_positives_from_benign_anomalies": 43
+    }
+  }
+}
