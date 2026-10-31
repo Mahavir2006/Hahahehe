@@ -231,9 +231,15 @@ def create_app(system: Optional[CascadeShieldSystem] = None) -> FastAPI:
     def plan(plan_id: str, r: str = Depends(role)):
         return find_plan(plan_id, r)[1]
 
+    def prune(org: str) -> None:
+        """Forget approval requests the chain has already closed, so they stop showing as pending."""
+        s = S()
+        s.orch[org].prune_resolved_approvals(s.humans[org].view)
+
     @app.post("/api/plans/{plan_id}/submit-for-approval")
     def submit(plan_id: str, r: str = Depends(role)):
         org, p = find_plan(plan_id, r)
+        prune(org)
         for rid, info in S().nodes[org].pending_approvals.items():
             if info["plan_id"] == plan_id:
                 return {"request_id": rid, "status": "already submitted"}
@@ -244,6 +250,7 @@ def create_app(system: Optional[CascadeShieldSystem] = None) -> FastAPI:
         out = []
         for org, n in S().nodes.items():
             if r in ("admin", f"org:{org}"):
+                prune(org)
                 out += [{"org": org, "request_id": rid, **info} for rid, info in n.pending_approvals.items()]
         return out
 
@@ -264,7 +271,10 @@ def create_app(system: Optional[CascadeShieldSystem] = None) -> FastAPI:
             (s.humans[v.org].approve if approve else s.humans[v.org].reject)(rid, v.approver)
         except ChainRevert as e:
             raise HTTPException(409, f"chain refused: {e.name}")
-        return s.humans[v.org].view(rid)
+        view = s.humans[v.org].view(rid)
+        if not approve:
+            prune(v.org)  # a rejection can close the request; drop it from the pending list right away
+        return view
 
     @app.post("/api/approvals/{rid}/approve")
     def approve(rid: str, v: Vote, r: str = Depends(role)):

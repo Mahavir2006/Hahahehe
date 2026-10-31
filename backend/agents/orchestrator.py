@@ -198,6 +198,33 @@ class Orchestrator:
         self.metrics["executed"] += 1
         return rec
 
+    # ApprovalGate states after which a request can never be executed. "None" means this chain has no such request
+    # (e.g. saved state from a previous chain); a live entry always exists on-chain, its id comes from the mined receipt.
+    FINAL_STATES = ("None", "Rejected", "Expired", "Executed", "Cancelled")
+
+    def prune_resolved_approvals(self, status_of: Callable[[str], Dict[str, Any]]) -> List[str]:
+        """Drop pending requests the chain has already closed (rejected, expired, cancelled, executed elsewhere).
+
+        Only execution removed entries before, so a rejected or expired request stayed listed as pending forever.
+        status_of(request_id) returns the approver view (status, seconds_left). The chain stays the source of truth:
+        if it cannot be read, nothing is removed."""
+        node = self.node
+        removed = []
+        for rid in list(node.pending_approvals):
+            try:
+                v = status_of(rid)
+            except Exception:  # noqa: BLE001  chain unreachable or unknown id: keep the entry, decide later
+                continue
+            expired = v.get("status") == "Pending" and v.get("seconds_left", 1) <= 0
+            if v.get("status") in self.FINAL_STATES or expired:
+                removed.append(rid)
+        if removed:
+            with self.lock:
+                for rid in removed:
+                    node.pending_approvals.pop(rid, None)
+                save_state(node)
+        return removed
+
     def continue_after_approval(self, request_id: str) -> Dict[str, Any]:
         """Call once humans approved on-chain. The executor re-verifies everything against the chain."""
         node = self.node

@@ -103,7 +103,7 @@ export function Approvals() {
                       Request {short(r.request_id)} · {r.status} · {r.approvals}/{r.required} approvals · impact {r.impact} · {Math.round(r.seconds_left / 60)} min left
                     </small>
                   )}
-                  {state && <Tag tone="info">{state}</Tag>}
+                  {state ? <Tag tone="info">{state}</Tag> : !r && <Tag>no open approval request (approved and run, rejected, or expired)</Tag>}
                 </div>
                 <div className="row-actions">
                   {r && r.status === "Pending" &&
@@ -129,7 +129,7 @@ export function Approvals() {
                       <Play size={13} /> Execute
                     </button>
                   )}
-                  {(state === "executed" || (!r && state !== "rolled back")) && (
+                  {state === "executed" && (
                     <button className="btn btn-ghost" disabled={busy !== null} onClick={() => run(p.plan_id, `Rolled back ${p.plan_id}`, () => api(`/api/plans/${p.plan_id}/rollback`, {}, 120_000), () => setDone((d) => ({ ...d, [p.plan_id]: "rolled back" })))}>
                       <RotateCcw size={13} /> Roll back
                     </button>

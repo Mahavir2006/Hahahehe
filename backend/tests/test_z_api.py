@@ -124,3 +124,41 @@ def test_advisory_ingestion_is_scoped_to_the_callers_org(api):
     res = api.post("/api/advisories", json={"text": "Vendor bulletin VSB-API\nCVE-2024-99001: flaw in Contoso Gadget versions before 1.2.0.\nCVSS: 5.0", "source": "api-test"},
                    headers=WATER).json()
     assert set(res) == {"water"} and res["water"]["status"] in ("no_match", "duplicate")
+
+
+@pytest.mark.req("API-01", "BC-GATE-01")
+def test_rejected_request_leaves_the_pending_list(api):
+    """A request the chain has closed (here: rejected) must stop showing as pending; before, only execution removed it."""
+    text = "Siemens advisory SSA-API-REJECT\nCVE-2024-99417: authentication bypass in Siemens SICAM PAS versions before 8.3.0.\nCVSS: 9.8\nKnown exploited."
+    res = api.post("/api/advisories", json={"text": text, "source": "api-test"}, headers=POWER).json()["power"]
+    if res["status"] != "awaiting_approval":
+        pytest.skip(f"advisory did not reach the gate ({res['status']})")
+    rid = res["request_id"]
+    assert rid in [a["request_id"] for a in api.get("/api/approvals", headers=POWER).json()]
+    for approver in range(3):  # reject until the gate closes the request (a safety-officer veto may close it first)
+        r = api.post(f"/api/approvals/{rid}/reject", json={"org": "power", "approver": approver}, headers=POWER)
+        if r.status_code != 200 or r.json()["status"] != "Pending":
+            break
+    assert api.get(f"/api/approvals/{rid}", headers=ADMIN).json()["status"] == "Rejected"
+    assert rid not in [a["request_id"] for a in api.get("/api/approvals", headers=POWER).json()]
+
+
+def test_prune_keeps_requests_it_cannot_check(system):
+    """Expired requests are dropped; if the chain cannot be read the entry is kept (the chain decides, not a guess)."""
+    orch = system.orch["power"]
+    orch.node.pending_approvals["0xexpired"] = {"plan_id": "P-x", "plan_hash": "h1", "impact": 1, "created": 0}
+    orch.node.pending_approvals["0xunreadable"] = {"plan_id": "P-y", "plan_hash": "h2", "impact": 1, "created": 0}
+
+    def status_of(rid):
+        if rid == "0xunreadable":
+            raise RuntimeError("chain unavailable")
+        if rid == "0xexpired":
+            return {"status": "Pending", "seconds_left": 0}
+        return {"status": "Pending", "seconds_left": 600}
+
+    try:
+        assert orch.prune_resolved_approvals(status_of) == ["0xexpired"]
+        assert "0xunreadable" in orch.node.pending_approvals
+    finally:
+        orch.node.pending_approvals.pop("0xexpired", None)
+        orch.node.pending_approvals.pop("0xunreadable", None)
