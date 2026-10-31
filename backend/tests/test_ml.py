@@ -95,12 +95,14 @@ def test_what_changed_names_the_feature_that_moved():
 
 @pytest.mark.req("RISK-04")
 def test_band_hysteresis_needs_a_margin_to_flip():
-    hi = 50.0  # medium/high boundary
+    from backend.common.config import settings
+
+    hi = settings.risk_band_medium_max  # medium/high boundary
     assert M.band_with_hysteresis(hi + 0.5, "medium") == "medium"
     assert M.band_with_hysteresis(hi + M.BAND_HYSTERESIS + 0.01, "medium") == "high"
     assert M.band_with_hysteresis(hi - 0.5, "high") == "high"
     assert M.band_with_hysteresis(hi - M.BAND_HYSTERESIS - 0.01, "high") == "medium"
-    assert M.band_with_hysteresis(10, None) == "low"
+    assert M.band_with_hysteresis(settings.risk_band_low_max - 1, None) == "low"
 
 
 @pytest.mark.req("RISK-01")

@@ -42,10 +42,11 @@ class Settings(BaseSettings):
     approval_ttl_seconds: int = Field(default=3600, alias="APPROVAL_TTL_SECONDS")
     critic_max_iterations: int = Field(default=3, alias="CRITIC_MAX_ITERATIONS")
     
-    # Risk Band Thresholds
-    risk_band_low_max: int = Field(default=25, alias="RISK_BAND_LOW_MAX")
-    risk_band_medium_max: int = Field(default=50, alias="RISK_BAND_MEDIUM_MAX")
-    risk_band_high_max: int = Field(default=75, alias="RISK_BAND_HIGH_MAX")
+    # Risk Band Thresholds: 50th / 80th / 95th percentile of M1 risk on held-out generator A, by the rule fixed in
+    # docs/ML_DECISIONS.md section 3 before computing them (evaluation/band_thresholds.py; was 25 / 50 / 75)
+    risk_band_low_max: float = Field(default=9.14, alias="RISK_BAND_LOW_MAX")
+    risk_band_medium_max: float = Field(default=15.33, alias="RISK_BAND_MEDIUM_MAX")
+    risk_band_high_max: float = Field(default=38.45, alias="RISK_BAND_HIGH_MAX")
     
     # Cascade Alert Threshold
     cascade_alert_threshold: float = Field(default=0.5, alias="CASCADE_ALERT_THRESHOLD")

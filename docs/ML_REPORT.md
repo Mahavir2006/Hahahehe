@@ -59,10 +59,14 @@ integer basis points, the cascade engine, the planner's what-if wiring, the crit
    from the labels by construction, so this measures the simulation's assumption more than real-world value.
 7. **KEV rows are scarce**: only 9 snapshot CVEs are in KEV, giving 54 KEV rows in generator A (observed compromise
    rate 0.685 in those rows). M1 under-predicts that sparse region.
-8. **Demo impact.** With M1, the headline advisory raises `power-asset-001` from 12.06 to **medium** (41.85, CVSS 8.8 KEV-listed CVE), not critical.
-   The cross-org alert is gated on a high/critical service band, so it no longer fires, and lifecycle tests 06, 15
-   and 16 fail. Changing band thresholds or cascade constants until the demo passes would be tuning to a target,
-   so it was not done. This is an open decision for the team (section 8).
+8. **Band thresholds were re-derived from M1.** With the old thresholds (25 / 50 / 75, set for the previous
+   formula-fitted model) the headline advisory raised `power-asset-001` from 12.06 to 41.85 = medium, so the
+   cross-org alert did not fire and lifecycle tests 06, 15 and 16 failed. The team chose to derive thresholds from
+   M1's output by a rule committed before computing them (`docs/ML_DECISIONS.md` section 3: 50th / 80th / 95th
+   percentile of risk on held-out generator A). That gave 9.14 / 15.33 / 38.45. The headline asset (41.85) is now
+   critical, the alert fires and all lifecycle tests pass. Before any advisory, the 75 demo assets split into
+   54 low, 17 medium, 4 high and 0 critical. Bands are therefore relative ("top 5% of simulated asset-windows is
+   critical"), not absolute probabilities.
 9. **The on-chain privacy layer holds for identities, not for timing.** M3 maps a hash to its named service at 0.319
    against 0.2592 chance, but infers "this service is currently high/critical" from attestation and alert timing at
    0.8271 against a 0.6667 majority baseline. This rests on the adversary simulation's own assumption that busy
@@ -147,7 +151,7 @@ Determinism: same model_version True, same artifact sha256 True, identical predi
 
 ### M4 trend backtest
 
-2000 synthetic histories, forecast from day 30, horizon 30 days, 767 with a real crossing. MAE of crossing time: M4 4.829 days, naive last value 7.652 days. M4 anticipated 611 of 767 crossings.
+2000 synthetic histories, forecast from day 30, horizon 30 days, 558 with a real crossing. MAE of crossing time: M4 3.081 days, naive last value 5.644 days. M4 anticipated 455 of 558 crossings.
 
 ### M3 leakage adversary (20 runs, mean ± std)
 
@@ -176,9 +180,9 @@ Anonymity set (services in the same org with identical public observables): mean
 | SERVICE_WEIGHT x0.8 | 1.0 | 9 |
 | SERVICE_WEIGHT x1.2 | 1.0 | 9 |
 | BAND_P x0.8 | 1.0 | 9 |
-| BAND_P x1.2 | 1.0 | 9 |
-| STRENGTH_W x0.8 | 0.8824 | 9 |
-| STRENGTH_W x1.2 | 0.8824 | 9 |
+| BAND_P x1.2 | 0.9429 | 9 |
+| STRENGTH_W x0.8 | 0.8857 | 9 |
+| STRENGTH_W x1.2 | 0.8857 | 9 |
 | monitoring_multiplier_0.85 x0.8 | 0.8222 | 9 |
 | monitoring_multiplier_0.85 x1.2 | 1.0 | 9 |
 | isolation_multiplier_0.3 x0.8 | 1.0 | 10 |
@@ -188,6 +192,16 @@ Anonymity set (services in the same org with identical public observables): mean
 
 - Generator A: 2000 assets, 16000 rows, positive rate 0.1687, rows with a vulnerability 3112, rows known-exploited 54, CVEs from type-matched advisories 506, from sector fallback 2425, attack episodes 1352, leakage audit passed True.
 - Generator B: 800 assets, 6400 rows, positive rate 0.1702, rows with a vulnerability 1225, rows known-exploited 21, CVEs from type-matched advisories 251, from sector fallback 858, attack episodes 343, leakage audit passed True.
+
+### Band thresholds (rule: 50th / 80th / 95th percentile of M1 risk on the held-out grouped test split of generator A (docs/ML_DECISIONS.md section 3))
+
+| Boundary | Previous | Derived from M1 |
+|---|---|---|
+| low / medium | 25 | 9.14 |
+| medium / high | 50 | 15.33 |
+| high / critical | 75 | 38.45 |
+
+Computed over 3200 held-out rows; risk range 3.38 to 85.17.
 
 ## 6. Integration contract (implemented)
 
@@ -212,6 +226,7 @@ Anonymity set (services in the same org with identical public observables): mean
 - Labels are synthetic; any metric measures agreement with the simulation, not real-world skill.
 - The EPSS feature is a proxy of CVSS and KEV.
 - Only 9 KEV CVEs exist in the snapshot, so the known-exploited region is thinly trained.
+- Band thresholds are percentiles of M1's own output on simulated data, so a band means a relative rank, not an absolute probability; they must be re-derived whenever M1 is retrained.
 - Telemetry precursors are drawn from the labels, so telemetry importance is partly built in.
 - Demo assets get benign-only simulated telemetry; some benign anomalies trip rules D1, D2 and D5 (see the D table).
 - Rules D1, D2 and D5 have low precision (0.23 to 0.45) because benign off-calendar activity looks like the attack signal.
@@ -220,7 +235,6 @@ Anonymity set (services in the same org with identical public observables): mean
 
 | Item | Why |
 |---|---|
-| Keep all lifecycle tests green (06, 15, 16 fail) | With M1 the headline service is medium, so the cross-org alert (gated on high/critical) does not fire. Two attempts: the existing gate, and the spec's AG-CAS-05 p_degraded-only rule (downstream p stayed below 0.5). Fixing it further means changing band thresholds or cascade constants to make a demo pass, which the prompt forbids as target-tuning. Team decision needed: keep M1 and change the demo narrative, or adopt pre-declared thresholds derived from M1's output distribution. |
 | M2 anomaly signal | Optional; skipped to keep the time budget for integration and evaluation. |
 | Public ICS datasets (CIC Modbus 2023, SWaT, WADI) | Not downloaded; access and licence checks were out of the time budget. Simulated telemetry has not been checked against real traffic. |
 | Hardhat-based lifecycle test 23 | Excluded from the regular runs only because it takes about 13 minutes (pre-existing quadratic advisory parser); it passed earlier on this branch's parent. |

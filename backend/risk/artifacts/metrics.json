@@ -588,10 +588,10 @@
     "history_days": 60,
     "forecast_from_day": 30,
     "horizon_cap_days": 30,
-    "histories_with_a_crossing": 767,
-    "mae_days_m4": 4.829,
-    "mae_days_naive_last_value": 7.652,
-    "crossings_anticipated_by_m4": 611,
+    "histories_with_a_crossing": 558,
+    "mae_days_m4": 3.081,
+    "mae_days_naive_last_value": 5.644,
+    "crossings_anticipated_by_m4": 455,
     "note": "synthetic risk histories; no-crossing cases count as the horizon cap for both forecasters"
   },
   "constant_sensitivity": {
@@ -656,15 +656,15 @@
         "top10_overlap": 9
       },
       "BAND_P x1.2": {
-        "kendall_tau_top10": 1.0,
+        "kendall_tau_top10": 0.9429,
         "top10_overlap": 9
       },
       "STRENGTH_W x0.8": {
-        "kendall_tau_top10": 0.8824,
+        "kendall_tau_top10": 0.8857,
         "top10_overlap": 9
       },
       "STRENGTH_W x1.2": {
-        "kendall_tau_top10": 0.8824,
+        "kendall_tau_top10": 0.8857,
         "top10_overlap": 9
       },
       "monitoring_multiplier_0.85 x0.8": {
@@ -723,5 +723,19 @@
     },
     "edge_existence_between_hashes": "fully public (accepted residual, docs/THREAT_MODEL.md)",
     "note": "simulated consortia from outsider priors; evaluation only"
+  },
+  "band_thresholds": {
+    "rule": "50th / 80th / 95th percentile of M1 risk on the held-out grouped test split of generator A (docs/ML_DECISIONS.md section 3)",
+    "rows": 3200,
+    "risk_band_low_max": 9.14,
+    "risk_band_medium_max": 15.33,
+    "risk_band_high_max": 38.45,
+    "previous": {
+      "low_max": 25,
+      "medium_max": 50,
+      "high_max": 75
+    },
+    "risk_min": 3.38,
+    "risk_max": 85.17
   }
 }

@@ -70,3 +70,11 @@ for k, v in s.items():
 print("\n### Data\n")
 for g, v in man["generators"].items():
     print(f"- Generator {g}: {v['assets']} assets, {v['rows']} rows, positive rate {v['positive_rate']}, rows with a vulnerability {v['rows_with_vulnerability']}, rows known-exploited {v['rows_known_exploited']}, CVEs from type-matched advisories {v['cves_drawn_from_type_matched_advisories']}, from sector fallback {v['cves_drawn_from_sector_fallback']}, attack episodes {v['attack_episodes']}, leakage audit passed {v['leakage_audit']['passed']}.")
+
+bt = m.get("band_thresholds")
+if bt:
+    print(f"\n### Band thresholds (rule: {bt['rule']})\n\n| Boundary | Previous | Derived from M1 |\n|---|---|---|")
+    print(f"| low / medium | {bt['previous']['low_max']} | {bt['risk_band_low_max']} |")
+    print(f"| medium / high | {bt['previous']['medium_max']} | {bt['risk_band_medium_max']} |")
+    print(f"| high / critical | {bt['previous']['high_max']} | {bt['risk_band_high_max']} |")
+    print(f"\nComputed over {bt['rows']} held-out rows; risk range {bt['risk_min']} to {bt['risk_max']}.")
