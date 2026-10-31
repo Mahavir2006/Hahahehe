@@ -1,0 +1,19 @@
+{
+  "advisory_id": "ADV-2023-0011",
+  "cve_ids": [
+    "CVE-2023-INJECT1"
+  ],
+  "vendor": "Multiple",
+  "products": [
+    "Various"
+  ],
+  "affected_version_ranges": [
+    "all versions"
+  ],
+  "cvss_base": 10.0,
+  "exploited_in_wild": true,
+  "epss_like": 0.99,
+  "matched_assets": [],
+  "injection_suspected": true,
+  "injection": true
+}

@@ -1,0 +1,19 @@
+{
+  "advisory_id": "ADV-2023-0003",
+  "cve_ids": [
+    "CVE-2023-9012"
+  ],
+  "vendor": "Philips Healthcare",
+  "products": [
+    "IntelliVue MX800",
+    "IntelliVue MX700"
+  ],
+  "affected_version_ranges": [
+    "before 2.4.0"
+  ],
+  "cvss_base": 9.1,
+  "exploited_in_wild": true,
+  "epss_like": 0.91,
+  "matched_assets": [],
+  "injection": false
+}

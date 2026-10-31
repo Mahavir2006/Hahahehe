@@ -1,0 +1,21 @@
+ICS-CERT Advisory ICSA-2023-156-02
+Multiple Vulnerabilities in Rockwell Automation PowerFlex Drives
+
+Rockwell Automation has identified multiple vulnerabilities in PowerFlex 755 and 753 drives that could allow remote code execution and denial of service.
+
+Affected Products:
+- PowerFlex 755 firmware versions 12.001 through 12.004
+- PowerFlex 753 firmware versions before 11.005
+
+Vulnerability Details:
+1. CVE-2023-5678: Buffer overflow in EtherNet/IP communication module (CVSS 7.5)
+2. CVE-2023-5679: Improper input validation in web interface (CVSS 6.8)
+
+Impact: An attacker with network access to the drive could execute arbitrary code or cause a denial of service condition.
+
+Workarounds:
+- Disable unused network services
+- Restrict network access to trusted devices only
+- Monitor network traffic for anomalies
+
+Vendor Fix: Upgrade to firmware version 12.005 or later for 755, 11.005 or later for 753.

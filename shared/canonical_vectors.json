@@ -1,0 +1,114 @@
+[
+  {
+    "value": {
+      "a": 1,
+      "b": 2
+    },
+    "canonical": "{\"a\":1,\"b\":2}",
+    "sha256": "43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777"
+  },
+  {
+    "value": {
+      "b": {
+        "z": 1,
+        "a": 2
+      },
+      "a": 3
+    },
+    "canonical": "{\"a\":3,\"b\":{\"a\":2,\"z\":1}}",
+    "sha256": "b375125e33a203b70f14be432a2d7b0823e92ae82f505063e8b21ca5b7a73f42"
+  },
+  {
+    "value": [
+      3,
+      1,
+      2
+    ],
+    "canonical": "[3,1,2]",
+    "sha256": "51bda7ab4e44726cde71fcb6e4b515357059bb6b6dd5146d1fc50f73f11678c6"
+  },
+  {
+    "value": {
+      "items": [
+        {
+          "id": 2
+        },
+        {
+          "id": 1
+        }
+      ],
+      "count": 2
+    },
+    "canonical": "{\"count\":2,\"items\":[{\"id\":2},{\"id\":1}]}",
+    "sha256": "6b8739682007fc93d94564d691c92e20cbd4751ba14be4128012924d7f7a8851"
+  },
+  {
+    "value": {
+      "int": 42,
+      "float": 3.14,
+      "sci": 1000,
+      "neg": -7
+    },
+    "canonical": "{\"float\":3.14,\"int\":42,\"neg\":-7,\"sci\":1000}",
+    "sha256": "4ad69e72e99b692c62372ecb7c4bc4512c4e6d3209ee75ba08f91eb4bc3a2941"
+  },
+  {
+    "value": {},
+    "canonical": "{}",
+    "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  {
+    "value": [],
+    "canonical": "[]",
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+    "value": {
+      "msg": "hello é world with  spaces"
+    },
+    "canonical": "{\"msg\":\"hello é world with  spaces\"}",
+    "sha256": "094b8fd0998f55b4624d6351eef8bd756f91a11feb8444c6b70189aeac56bb15"
+  },
+  {
+    "value": {
+      "text": "line one\nline two\ttabbed",
+      "quote": "she said \"hi\""
+    },
+    "canonical": "{\"quote\":\"she said \\\"hi\\\"\",\"text\":\"line one\\nline two\\ttabbed\"}",
+    "sha256": "fae4e9ed672b7684a46aee3e2ce82936c88758eee81e1db2f8b27c16e6785e57"
+  },
+  {
+    "value": {
+      "nested": {
+        "list": [
+          1,
+          {
+            "x": "y z"
+          },
+          null,
+          true,
+          false
+        ]
+      },
+      "empty": ""
+    },
+    "canonical": "{\"empty\":\"\",\"nested\":{\"list\":[1,{\"x\":\"y z\"},null,true,false]}}",
+    "sha256": "93c5426614aa44229296e10a2f5e0652c6dd6059b3d833f91961c22c35f1270a"
+  },
+  {
+    "value": {
+      "plan": {
+        "steps": [
+          {
+            "action": "PATCH",
+            "target": "power-asset-001",
+            "delta": -18.6528
+          }
+        ],
+        "org": "power"
+      }
+    },
+    "canonical": "{\"plan\":{\"org\":\"power\",\"steps\":[{\"action\":\"PATCH\",\"delta\":-18.6528,\"target\":\"power-asset-001\"}]}}",
+    "sha256": "7ca9508ce6070fa4c632a63472e951e198a7be9984f66d0a8c9c517ba8b7a445"
+  }
+]

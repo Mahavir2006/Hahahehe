@@ -1,0 +1,20 @@
+{
+  "advisory_id": "ADV-2023-0008",
+  "cve_ids": [
+    "CVE-2023-8642"
+  ],
+  "vendor": "Emerson",
+  "products": [
+    "Rosemount 56"
+  ],
+  "affected_version_ranges": [
+    "before 4.3.0"
+  ],
+  "cvss_base": 8.2,
+  "exploited_in_wild": false,
+  "epss_like": 0.55,
+  "matched_assets": [
+    "water-asset-002"
+  ],
+  "injection": false
+}

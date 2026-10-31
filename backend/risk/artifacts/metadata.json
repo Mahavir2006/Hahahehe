@@ -1,0 +1,25 @@
+{
+  "model_version": "523aa67236af48e7",
+  "features": [
+    "internet_exposed",
+    "cvss_base",
+    "epss_like",
+    "default_credentials",
+    "zone_ord",
+    "days_since_patch",
+    "criticality",
+    "num_dependents",
+    "safety_critical",
+    "supply_chain_flag"
+  ],
+  "metrics": {
+    "auc": 0.8868460249487992,
+    "precision": 0.746268656716418,
+    "recall": 0.5725190839694656,
+    "n_train": 4000,
+    "n_test": 1000,
+    "positive_rate": 0.2616
+  },
+  "seed": 42,
+  "data": "synthetic (data/historical_incidents.csv)"
+}

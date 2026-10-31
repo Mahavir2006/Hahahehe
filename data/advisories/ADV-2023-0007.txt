@@ -1,0 +1,19 @@
+CERT-In Vulnerability Note CIVN-2023-0089
+SQL Injection in GE iFIX SCADA Software
+
+A SQL injection vulnerability exists in GE iFIX versions 5.9 and earlier. The vulnerability allows authenticated users to execute arbitrary SQL commands on the underlying database.
+
+Impact:
+- Data exfiltration from SCADA database
+- Modification of historical data
+- Potential for privilege escalation
+
+Affected: iFIX 5.9, 5.8, 5.7
+Fixed: iFIX 5.9 Hotfix 3 / iFIX 6.0
+
+CVSS 3.1: 8.5 (High)
+Exploited: Yes, in targeted attacks on energy sector
+
+Mitigation: Apply hotfix immediately. Restrict database access.
+
+Tracking: CVE-2023-1357

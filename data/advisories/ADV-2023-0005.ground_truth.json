@@ -1,0 +1,20 @@
+{
+  "advisory_id": "ADV-2023-0005",
+  "cve_ids": [
+    "CVE-2023-7890"
+  ],
+  "vendor": "ABB",
+  "products": [
+    "RTU560"
+  ],
+  "affected_version_ranges": [
+    "all versions"
+  ],
+  "cvss_base": 9.8,
+  "exploited_in_wild": true,
+  "epss_like": 0.95,
+  "matched_assets": [
+    "power-asset-002"
+  ],
+  "injection": false
+}

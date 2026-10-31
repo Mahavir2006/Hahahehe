@@ -1,0 +1,20 @@
+{
+  "advisory_id": "ADV-2023-0007",
+  "cve_ids": [
+    "CVE-2023-1357"
+  ],
+  "vendor": "GE Grid Solutions",
+  "products": [
+    "iFIX"
+  ],
+  "affected_version_ranges": [
+    "5.9 and earlier"
+  ],
+  "cvss_base": 8.5,
+  "exploited_in_wild": true,
+  "epss_like": 0.72,
+  "matched_assets": [
+    "power-asset-004"
+  ],
+  "injection": false
+}

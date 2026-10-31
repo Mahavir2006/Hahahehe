@@ -1,0 +1,18 @@
+{
+  "advisory_id": "ADV-2023-0009",
+  "cve_ids": [
+    "CVE-2023-9999"
+  ],
+  "vendor": "NonExistent Vendor",
+  "products": [
+    "XYZ-9000"
+  ],
+  "affected_version_ranges": [
+    "all versions"
+  ],
+  "cvss_base": 5.0,
+  "exploited_in_wild": false,
+  "epss_like": 0.1,
+  "matched_assets": [],
+  "injection": false
+}

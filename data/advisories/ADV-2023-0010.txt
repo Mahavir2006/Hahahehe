@@ -1,0 +1,8 @@
+Acme Security Bulletin ASB-2023-001
+Critical RCE in WidgetPro 1.0
+
+Acme Corp WidgetPro version 1.0 has a remote code execution vulnerability. No assets in our inventory use this product.
+
+CVSS: 9.8 (Critical)
+
+Tracking: CVE-2023-8888

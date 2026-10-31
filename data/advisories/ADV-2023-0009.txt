@@ -1,0 +1,9 @@
+CERT-In Advisory CIAD-2023-0100
+Vulnerability in NonExistent Vendor Product XYZ-9000
+
+This advisory describes a vulnerability in a product that does not exist in any known inventory. It is included to test negative matching.
+
+Affected: NonExistent Vendor XYZ-9000 all versions
+CVSS: 5.0 (Medium)
+
+Tracking: CVE-2023-9999

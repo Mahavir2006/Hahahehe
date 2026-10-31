@@ -1,0 +1,28 @@
+CERT-In Advisory CIAD-2023-0045
+Title: Authentication Bypass Vulnerability in Siemens SICAM PAS
+
+Description: A vulnerability has been identified in Siemens SICAM PAS versions prior to 8.3.0. The vulnerability allows an unauthenticated attacker to bypass authentication mechanisms and gain administrative access to the SCADA system.
+
+Affected Products:
+- Siemens SICAM PAS versions before 8.3.0
+
+Impact: Successful exploitation could allow an attacker to:
+- Gain full administrative control of the SCADA system
+- Modify configuration settings
+- Access sensitive operational data
+- Disrupt power grid operations
+
+CVSS v3.1 Base Score: 8.8 (High)
+Vector: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H
+
+Exploitation Status: Actively exploited in the wild (CISA KEV catalog)
+
+Recommendations:
+1. Upgrade to SICAM PAS version 8.3.0 or later immediately
+2. Implement network segmentation to restrict access to SCADA systems
+3. Monitor for suspicious authentication attempts
+4. Apply vendor-provided mitigations if immediate upgrade is not possible
+
+References:
+- Siemens Security Advisory SSA-2023-001
+- CVE-2023-1234

@@ -1,0 +1,20 @@
+{
+  "advisory_id": "ADV-2023-0006",
+  "cve_ids": [
+    "CVE-2023-2468"
+  ],
+  "vendor": "Schneider Electric",
+  "products": [
+    "EcoStruxure Control Expert",
+    "EcoStruxure Operator Terminal Expert"
+  ],
+  "affected_version_ranges": [
+    "2023.1 and earlier",
+    "2022 R2 and earlier"
+  ],
+  "cvss_base": 7.8,
+  "exploited_in_wild": false,
+  "epss_like": 0.38,
+  "matched_assets": [],
+  "injection": false
+}

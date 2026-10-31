@@ -1,0 +1,36 @@
+{
+  "name": "cascadeshield-chain",
+  "version": "1.0.0",
+  "description": "CascadeShield Smart Contracts",
+  "main": "hardhat.config.ts",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "node": "hardhat node",
+    "deploy": "hardhat run scripts/deploy.ts --network localhost",
+    "seed": "hardhat run scripts/seed.ts --network localhost",
+    "lint": "solhint contracts/**/*.sol",
+    "gas-report": "REPORT_GAS=true hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@openzeppelin/contracts": "^4.9.0",
+    "@typechain/ethers-v6": "^0.5.0",
+    "@typechain/hardhat": "^9.0.0",
+    "chai": "^4.3.0",
+    "ethers": "^6.11.0",
+    "hardhat": "^2.19.0",
+    "hardhat-gas-reporter": "^1.0.0",
+    "solhint": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "typechain": "^8.3.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.0"
+  }
+}

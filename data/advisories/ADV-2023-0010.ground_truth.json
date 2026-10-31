@@ -1,0 +1,18 @@
+{
+  "advisory_id": "ADV-2023-0010",
+  "cve_ids": [
+    "CVE-2023-8888"
+  ],
+  "vendor": "Acme Corp",
+  "products": [
+    "WidgetPro"
+  ],
+  "affected_version_ranges": [
+    "1.0"
+  ],
+  "cvss_base": 9.8,
+  "exploited_in_wild": false,
+  "epss_like": 0.1,
+  "matched_assets": [],
+  "injection": false
+}

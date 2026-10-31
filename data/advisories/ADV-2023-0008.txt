@@ -1,0 +1,18 @@
+ICS-CERT Advisory ICSA-2023-201-01
+Buffer Overflow in Emerson Rosemount 56 Chlorination Controller
+
+A stack-based buffer overflow vulnerability exists in the Modbus TCP implementation of Emerson Rosemount 56 chlorination controllers.
+
+Affected: Firmware versions before 4.3.0
+CVSS v3.1: 8.2 (High)
+Vector: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H
+
+An unauthenticated remote attacker could send specially crafted Modbus packets to execute arbitrary code on the controller, potentially manipulating water treatment chemical dosing.
+
+Recommendations:
+1. Upgrade to firmware 4.3.0 or later
+2. Disable Modbus TCP if not required
+3. Implement network segmentation for OT devices
+4. Monitor Modbus traffic for anomalies
+
+Tracking: CVE-2023-8642

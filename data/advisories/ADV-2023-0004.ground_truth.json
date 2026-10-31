@@ -1,0 +1,20 @@
+{
+  "advisory_id": "ADV-2023-0004",
+  "cve_ids": [
+    "CVE-2023-3456"
+  ],
+  "vendor": "Cisco",
+  "products": [
+    "Catalyst 9500"
+  ],
+  "affected_version_ranges": [
+    "17.6.1 and earlier"
+  ],
+  "cvss_base": 6.5,
+  "exploited_in_wild": false,
+  "epss_like": 0.23,
+  "matched_assets": [
+    "hospital-asset-001"
+  ],
+  "injection": false
+}

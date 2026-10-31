@@ -1,0 +1,15 @@
+CVE-2023-3456 - Cisco Catalyst 9500 Series Switches Denial of Service Vulnerability
+
+A vulnerability in the Cisco Discovery Protocol (CDP) implementation of Cisco Catalyst 9500 Series Switches could allow an unauthenticated, adjacent attacker to cause a denial of service (DoS) condition.
+
+Affected Products:
+- Cisco Catalyst 9500 Series Switches
+- Software versions 17.6.1 and earlier
+
+The vulnerability is due to improper validation of CDP packets. An attacker could exploit this vulnerability by sending a crafted CDP packet to an affected device. A successful exploit could allow the attacker to cause the device to reload, resulting in a DoS condition.
+
+CVSS v3.1 Base Score: 6.5 (Medium)
+Vector: CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H
+
+Workaround: Disable CDP on all interfaces where it is not required.
+Fixed Releases: 17.6.2 and later.

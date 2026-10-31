@@ -1,0 +1,20 @@
+[ICS-SECURITY] ABB RTU560 Critical Command Injection - All Versions Affected
+
+Researchers have discovered a critical command injection vulnerability in ABB RTU560 remote terminal units affecting all firmware versions.
+
+The vulnerability exists in the web management interface where user-supplied input is not properly sanitized before being passed to system commands. An authenticated attacker (default credentials often unchanged) can execute arbitrary commands as root.
+
+Affected: All firmware versions of RTU560
+CVSS: 9.8 (Critical) - Network accessible, no auth required if default creds
+
+PoC available. Patch not yet released by ABB.
+
+Mitigations:
+- Change default credentials immediately
+- Disable web interface if not needed
+- Place behind firewall with strict ACLs
+- Monitor for unusual process execution
+
+This is particularly concerning for power sector deployments.
+
+Tracking: CVE-2023-7890

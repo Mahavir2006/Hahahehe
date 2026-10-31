@@ -1,0 +1,578 @@
+[
+  {
+    "vendor": "Siemens",
+    "model": "SICAM PAS",
+    "version": "8.2.1",
+    "firmware_sha256": "0x4b32b238c48fdb09ae7ab54526e28efa251b680ae2ee8889a71109517cbf1683",
+    "sbom_hash": "0xd051efed7f04181659ddec4872a836b5514601a6daf16919f4277587a655495a",
+    "release_date": "2025-01-07"
+  },
+  {
+    "vendor": "ABB",
+    "model": "RTU560",
+    "version": "3.4.2",
+    "firmware_sha256": "0xfa6f4aef30332713f03983574f68cd64f7e03c716cf139b673ee05359bd85bb6",
+    "sbom_hash": "0xff619513b50ba732cffa9bd843312631f5a73ffe63f21da136e2e2ffdcae9b43",
+    "release_date": "2026-05-20"
+  },
+  {
+    "vendor": "Schneider Electric",
+    "model": "EcoStruxure",
+    "version": "2023.1",
+    "firmware_sha256": "0x1221acd0f46af2a96bffe110d165bd5e7b184387c54a17908ffdefdcb045c0e5",
+    "sbom_hash": "0x8a6777cf9e64a749c882a69ae4d21a7d665ab52b92d384eb73eb490b86681033",
+    "release_date": "2025-01-28"
+  },
+  {
+    "vendor": "GE Grid Solutions",
+    "model": "iFIX",
+    "version": "5.9",
+    "firmware_sha256": "0x0952d60b59e95f6b3fca7caebb25f3c528d64c8f84f89ed6bf7dddb273c8b832",
+    "sbom_hash": "0x4bc4b988f937ed04bd258f510e5a6066dd3ed920f1314bd151ff12bede879887",
+    "release_date": "2025-09-11"
+  },
+  {
+    "vendor": "AVEVA",
+    "model": "PI System",
+    "version": "2022 R2",
+    "firmware_sha256": "0x6e607095440ca7e9d24895db19154f8995ce2fc5ed773770b0cfdb39367e774e",
+    "sbom_hash": "0xa0b17ddb09400a3e16c13b0c3a3e63303b05a1b8dc5b96e9e9e906d2988cc98b",
+    "release_date": "2026-04-27"
+  },
+  {
+    "vendor": "Landis+Gyr",
+    "model": "E350",
+    "version": "1.2.3",
+    "firmware_sha256": "0x4ecfc3451d05505fbf882345196b22e7aabbfaee15616b0ec27669d3646e3835",
+    "sbom_hash": "0xdf4088679c54dcb2b4747311f2434a315e146229a9741865a2857d6ad5401a59",
+    "release_date": "2026-04-18"
+  },
+  {
+    "vendor": "Siemens",
+    "model": "S7-1500",
+    "version": "2.9.1",
+    "firmware_sha256": "0x0e34a14f1f9de6f9c1874fd0f6a85bf1e4c2b6dd52d7771df97fe05db20a3f15",
+    "sbom_hash": "0x1223714374a39476e517b7b55f123d0ceafba87eb395831100bee82b0a6625d9",
+    "release_date": "2026-03-30"
+  },
+  {
+    "vendor": "Palo Alto Networks",
+    "model": "PA-5220",
+    "version": "10.2.0",
+    "firmware_sha256": "0xa87016c96fb4ecd42fa61ebc07d4866427cfe9e45fef60f7f073041dfc85b93c",
+    "sbom_hash": "0xdf9d932987880d6bae7a9d2424e46fb11db3e253fb1f9df6efed997dc24b4b15",
+    "release_date": "2024-06-02"
+  },
+  {
+    "vendor": "Dell",
+    "model": "PowerEdge R650",
+    "version": "2023.01",
+    "firmware_sha256": "0x67d1d11122a3e8a2a479b43a41a7b09247782e14f9dfc391d6c2c6a2305b2abc",
+    "sbom_hash": "0x684232b8abd6885f0a67b66546406faa051598566dc6139f37b37d68ca0d0de0",
+    "release_date": "2024-10-22"
+  },
+  {
+    "vendor": "Siemens",
+    "model": "Model-713",
+    "version": "6.7.0",
+    "firmware_sha256": "0xecc22d0872f8e418ab006547dbc5d14ce3b4a5ede6fb7f0f70c33c433bdc590d",
+    "sbom_hash": "0x65103a5045fb8e048e57701e0e9093533e345c35e00d20983e014b48746e5a6c",
+    "release_date": "2024-08-03"
+  },
+  {
+    "vendor": "GE Grid Solutions",
+    "model": "Model-662",
+    "version": "3.4.8",
+    "firmware_sha256": "0xd5baef9aec32a79b0eb788b9e2d6b299a0edcb40eebc6571fe364bbf4bdc623c",
+    "sbom_hash": "0xdad6b1f2bcc25b465b75aec1bee3aa7866e5be6435180d1df3c2c48fda277618",
+    "release_date": "2024-12-31"
+  },
+  {
+    "vendor": "Siemens",
+    "model": "Model-446",
+    "version": "1.9.8",
+    "firmware_sha256": "0xf54a37b5e2f493b7d191125750dee7547843f448c600b7b816423e45f8245cc2",
+    "sbom_hash": "0x39331cf1ca5c120cd0371f98bf8cffa6e66f74880bca233fd5d06335a2d3f7e4",
+    "release_date": "2024-06-25"
+  },
+  {
+    "vendor": "Eaton",
+    "model": "Model-690",
+    "version": "8.3.7",
+    "firmware_sha256": "0x200abe12f62ba78775be1c02b7547fe7be34a30c2b906bf49895be6bbeec3fd3",
+    "sbom_hash": "0x637d4066eb4a49f9fe59148cdc233e34188aa5cc866f52c7339ef01e3b944cb1",
+    "release_date": "2024-03-21"
+  },
+  {
+    "vendor": "Eaton",
+    "model": "Model-559",
+    "version": "3.6.2",
+    "firmware_sha256": "0xa0d47a3164fcb9996535c9871829576de699ed057ac4b4d835a12d75fc15c414",
+    "sbom_hash": "0x9ecbe2b2e00f67202134ac71c702098ffa9afc09ba4153411da953f7896ae692",
+    "release_date": "2026-04-15"
+  },
+  {
+    "vendor": "ABB",
+    "model": "Model-270",
+    "version": "7.7.7",
+    "firmware_sha256": "0x6b40270347b6b358851127de0000c848ce50dcdb8333e9ec3386d5a0b34778d0",
+    "sbom_hash": "0xd5ea6c60d701ad81a82d7ea9794a4aed77d3391455156d0cf4048025814a015e",
+    "release_date": "2024-09-23"
+  },
+  {
+    "vendor": "ABB",
+    "model": "Model-294",
+    "version": "5.3.0",
+    "firmware_sha256": "0xe0ba1afbefcafe2da13f9f16b7b33e8e1a62b9df2b1608417f34a236c38ebccf",
+    "sbom_hash": "0x0347031935b2772e7dbd66e7b36257e953480e2be302ad8eceba402fd801580b",
+    "release_date": "2025-07-10"
+  },
+  {
+    "vendor": "Siemens",
+    "model": "Model-569",
+    "version": "10.9.1",
+    "firmware_sha256": "0x5f043aa44d3618860509014e5b5fe3a2f81fd6a368e3d6ed2165c245228a957f",
+    "sbom_hash": "0x38affa8021f512d86d9910a339065d5ea0693d0dbc21a90483c186097813fd40",
+    "release_date": "2026-08-18"
+  },
+  {
+    "vendor": "Siemens",
+    "model": "Model-783",
+    "version": "9.4.1",
+    "firmware_sha256": "0xe4631773e66b8993ca3badd435646ed240aa1da862fe80fe97f73e6cbce62b3f",
+    "sbom_hash": "0xf8b4c3a7a59862538413279b04bfaf6c0a38431b97db9f1ae95eee1205273bf0",
+    "release_date": "2025-08-07"
+  },
+  {
+    "vendor": "GE Grid Solutions",
+    "model": "Model-357",
+    "version": "1.1.6",
+    "firmware_sha256": "0xe1eaad49d66685984fa77c263a9bdd1826682c220402f90603ba3ae2e0f9e9e4",
+    "sbom_hash": "0xbdaa4320c8457c67cd69d0f2257e7931f286dc4e0d590a4221f14913bfcbf4a2",
+    "release_date": "2025-09-23"
+  },
+  {
+    "vendor": "Siemens",
+    "model": "Model-954",
+    "version": "6.9.8",
+    "firmware_sha256": "0xa216df900cfdcb6330109e11cc75f4642c524d250a574fdfb232f707a3806a33",
+    "sbom_hash": "0x002ea38010bf0274215208d9cbe98baea386d4d0d5d80037cc9a77a5dac7454a",
+    "release_date": "2024-11-08"
+  },
+  {
+    "vendor": "ABB",
+    "model": "Model-985",
+    "version": "3.2.6",
+    "firmware_sha256": "0x3aa588e3771ecf3caebf8a27763322a8d55f167a39ccab97f618e2e6a8729b31",
+    "sbom_hash": "0x3696ade959231654eb4f03b7febfd4e7428a0f850830db8e8499a94051cced30",
+    "release_date": "2024-09-25"
+  },
+  {
+    "vendor": "Schneider Electric",
+    "model": "Model-940",
+    "version": "4.3.0",
+    "firmware_sha256": "0x342d3a2f80077bfd0cffd73064e25a17de78344bfdfa111c0a9ae3911a2ef306",
+    "sbom_hash": "0xcc60c7fab5654d11f563b6e90468c510c440d81e3cba0c27aa5b6e004413827d",
+    "release_date": "2026-01-31"
+  },
+  {
+    "vendor": "Siemens",
+    "model": "Model-211",
+    "version": "10.6.5",
+    "firmware_sha256": "0xc29ed7e025961ba73824420159cb2f89ecc1ffd6d3303d780563999decfd083b",
+    "sbom_hash": "0x47e4dc25e26d8b10965ce620cb79f90c963acaca70b4e84f895c2f1b680cd371",
+    "release_date": "2025-07-04"
+  },
+  {
+    "vendor": "Schneider Electric",
+    "model": "Model-541",
+    "version": "2.5.9",
+    "firmware_sha256": "0x3516042bf6ae4d5156fa6eda209c2f2b315f45939b8d930d9f7b8684e1c4dc74",
+    "sbom_hash": "0xa1353a4010908f6112c91161e3729cf6fa2c6fbd5b24468f3efd1d6bcbef0b20",
+    "release_date": "2025-01-14"
+  },
+  {
+    "vendor": "Rockwell Automation",
+    "model": "PowerFlex 755",
+    "version": "12.001",
+    "firmware_sha256": "0x198ab1b907703e159993ebe052c3abaf1854597b06f1bb77b399a926b98365c8",
+    "sbom_hash": "0x8844b8373810ec3f65401f866f840bded3c5e9afa231ee8a6e368dbd6c957504",
+    "release_date": "2025-12-14"
+  },
+  {
+    "vendor": "Emerson",
+    "model": "Rosemount 56",
+    "version": "4.2.0",
+    "firmware_sha256": "0xa9ce1b0a0833b196219248eb025a6f52ad054d0b720e4887b76bb992ff1e4641",
+    "sbom_hash": "0xad4cb91e79f4a015b7de523128aff83c4466f085e1da6a292e5af5af15585a51",
+    "release_date": "2024-08-22"
+  },
+  {
+    "vendor": "AVEVA",
+    "model": "Historian",
+    "version": "2023",
+    "firmware_sha256": "0x98ed7fb335a033a83aa39022183c5d786a2bb32f16820dbfba03ac83b99b56db",
+    "sbom_hash": "0xc5f4cce48cdc52b1ca0480cba4929a38744bbcd0086edc4d1088e3fc50d62d76",
+    "release_date": "2024-08-26"
+  },
+  {
+    "vendor": "Schneider Electric",
+    "model": "SCADAPack 570",
+    "version": "5.1.2",
+    "firmware_sha256": "0x2cf24de5a36bc6b5dfe8bff4501fd91231c76584428b1c87c99d125cf3b955a5",
+    "sbom_hash": "0xf1e412dc42c982cf060608cd965d4638028438f7a446eb2498c978c8cebe1cbf",
+    "release_date": "2024-07-21"
+  },
+  {
+    "vendor": "Endress+Hauser",
+    "model": "Promag W 400",
+    "version": "2.1.0",
+    "firmware_sha256": "0xfb1618b1d1ad18081cc417c64eb61dbeb74b546a6a7e28c508abfdd0fef1ed05",
+    "sbom_hash": "0xd40c1e6458f101f9802e36c151ae13a010639f020a525e1a1a3028daf80c2dcf",
+    "release_date": "2025-06-29"
+  },
+  {
+    "vendor": "Yokogawa",
+    "model": "EJA530E",
+    "version": "3.0.1",
+    "firmware_sha256": "0xcea09ac13082129cd394c7d9c122169cc53132dffdd649f0aa318b81fcf73d42",
+    "sbom_hash": "0xe41b2d6e9e4d1ae9f020137eb393e37a7d84616986ca2443da0eb074fadf97a9",
+    "release_date": "2026-02-04"
+  },
+  {
+    "vendor": "Cisco",
+    "model": "Firepower 2130",
+    "version": "7.2.0",
+    "firmware_sha256": "0x25d475e8240c385fa765e94894f77564b30286de6d9e9f3808eb4f05de51af3c",
+    "sbom_hash": "0xf75953ec70dab1f19dc5a4617c992ff2465759fba5de087a14261a2ee48850ef",
+    "release_date": "2025-04-03"
+  },
+  {
+    "vendor": "HP",
+    "model": "ProLiant DL380",
+    "version": "2023.02",
+    "firmware_sha256": "0xe41a6caeae89c6e8e108f72c04411f48ca40f74d4e62a38c095b3fff28607662",
+    "sbom_hash": "0x4f9b27ceeac5fb7e086b27d011b5f2cda4425f26bd23faef59f9e5a743ae69b6",
+    "release_date": "2026-01-30"
+  },
+  {
+    "vendor": "Siemens",
+    "model": "S7-1200",
+    "version": "4.5.0",
+    "firmware_sha256": "0x58921d0a498f2279f8eba0e60c9bbaed4e09daf53e55cf7b463d65c550f93a4f",
+    "sbom_hash": "0x84813783dd83c2b7e3c473297499b2846adef83ae39f4cd06e341faa50f0d82e",
+    "release_date": "2025-11-19"
+  },
+  {
+    "vendor": "Honeywell",
+    "model": "Niagara 4",
+    "version": "4.10",
+    "firmware_sha256": "0x49bcf9f92db5dd53542775f5a3db79118e4122fbad2c89113838473d0d5dd5d4",
+    "sbom_hash": "0xdf49d69900f5123aad44ca082321b68d5461079bfff0fe1134f5831006a17da4",
+    "release_date": "2024-06-25"
+  },
+  {
+    "vendor": "Yokogawa",
+    "model": "Model-470",
+    "version": "8.2.6",
+    "firmware_sha256": "0x3259d57f8ae4cf091572428d3f66c3b9bba4550d7d65e665b5ec4e4152d4870d",
+    "sbom_hash": "0x3bfc4947186b9f31efdfc2935a1e61a28b40b1f8f1ba6ead16c2f05c1a8504b6",
+    "release_date": "2024-07-20"
+  },
+  {
+    "vendor": "Honeywell",
+    "model": "Model-129",
+    "version": "8.5.2",
+    "firmware_sha256": "0x27c7ba4d6b01657fbc84e690507d7eb3a834c34923e509a73fdce0a8bcf98805",
+    "sbom_hash": "0x35cd826b488701981986288e1e9e588a9749246d9aebd34cd811eb3f5074b5ef",
+    "release_date": "2025-06-08"
+  },
+  {
+    "vendor": "Yokogawa",
+    "model": "Model-558",
+    "version": "1.1.4",
+    "firmware_sha256": "0xbe4eed285efbf110ebcfa41fbfd813ee9c49ebb856fd8c527acb069d4d37d5bc",
+    "sbom_hash": "0x0299008e6286ce3372659b96e1b1f6a3e753ea6c0524436f88c388ed2d52bbab",
+    "release_date": "2024-03-20"
+  },
+  {
+    "vendor": "Emerson",
+    "model": "Model-223",
+    "version": "4.5.1",
+    "firmware_sha256": "0xc26af86db4861dbe7fe0543c0e1176a1063c66589dfd9ec61f7e4a2e138febee",
+    "sbom_hash": "0x9a73d919d7d50c27c424ae5a5a03075d06da144eabd665a3edf28c58d5964b3c",
+    "release_date": "2024-05-29"
+  },
+  {
+    "vendor": "Rockwell Automation",
+    "model": "Model-666",
+    "version": "5.2.7",
+    "firmware_sha256": "0xb69f58ed8c1cfcc491b3221836b6ee4eacc9a5d6e5df07bae54d4f89fa4d656f",
+    "sbom_hash": "0xcf5107efa3d2c12611dc53e93ac5bbf7b0c9462150b5864d91a8586ca0071640",
+    "release_date": "2026-03-17"
+  },
+  {
+    "vendor": "Emerson",
+    "model": "Model-252",
+    "version": "10.4.1",
+    "firmware_sha256": "0xe9f26503250a0ded58f7c73a1f4b3c4e3683a36453eb67af1f6b2ea1e3891c36",
+    "sbom_hash": "0x8dbdc807c4e3d407ee06cc5aaf3eda76301306910f3750fc5386f2b2e79e0a29",
+    "release_date": "2025-09-20"
+  },
+  {
+    "vendor": "Rockwell Automation",
+    "model": "Model-803",
+    "version": "4.4.9",
+    "firmware_sha256": "0x06335a7bf950f2fc1dd26fe10e3304cc5392db671f40b850e64317c90d246c2d",
+    "sbom_hash": "0xf6ca1a2fc9a5efc010357fb3a018d1040efdc9dd17b14fdbadb22676f54b66d2",
+    "release_date": "2024-11-06"
+  },
+  {
+    "vendor": "Rockwell Automation",
+    "model": "Model-579",
+    "version": "5.6.4",
+    "firmware_sha256": "0x8050bffdf32170302fdf1b5d9af328c852eb9081c73531f40d2a3e19b53d7bed",
+    "sbom_hash": "0x05d152754a698d02b030e886c4951e48a103e6ce947bf7f25e818cbb929ed3e2",
+    "release_date": "2024-02-05"
+  },
+  {
+    "vendor": "Honeywell",
+    "model": "Model-690",
+    "version": "1.2.7",
+    "firmware_sha256": "0x1f746fcc546ce826d527a5220c9f1c6f0f1fd9a8f17c145a9001d04476655ea4",
+    "sbom_hash": "0x529d012137328e2414aee7cfc56bdfb9f95a0fe259c908afff385896e4777d5f",
+    "release_date": "2025-02-24"
+  },
+  {
+    "vendor": "Emerson",
+    "model": "Model-437",
+    "version": "7.7.4",
+    "firmware_sha256": "0x2ca49b5abc69bbef27df3c1efacd0db77332c90cf82687a39e69203297e28be3",
+    "sbom_hash": "0xec1f1f713e816b782c5820faf483e26ab99d930ff6ddbf4a8acbf9525821d190",
+    "release_date": "2025-07-07"
+  },
+  {
+    "vendor": "Siemens",
+    "model": "Model-573",
+    "version": "7.0.3",
+    "firmware_sha256": "0xbfba34d35a0f033d088dce7b91a1df105dc01ef3985db04474de25a52e32696e",
+    "sbom_hash": "0xbcc18c53136b6c47593f138667161acc7cf44052363247156f96278a770d389d",
+    "release_date": "2025-06-16"
+  },
+  {
+    "vendor": "Emerson",
+    "model": "Model-418",
+    "version": "9.0.8",
+    "firmware_sha256": "0x12cf6f52e36ce320db53ea3b4b56e391dc9bc4e5162aafb5949d60137de405b8",
+    "sbom_hash": "0x8b545916086ab96bbc6c7f9def430509c06cde49a976cdb819108770b57bcddb",
+    "release_date": "2024-08-05"
+  },
+  {
+    "vendor": "Emerson",
+    "model": "Model-567",
+    "version": "9.2.6",
+    "firmware_sha256": "0x6e4883231184ffcb8023137ab511827c9b5b7dc79b9ea81be0eee5a2c76f9eea",
+    "sbom_hash": "0x4bf94fd04b5358c6f84906fa85245674c38e30d10ff4d56ec9ae45eca909458c",
+    "release_date": "2025-12-17"
+  },
+  {
+    "vendor": "Honeywell",
+    "model": "Model-665",
+    "version": "9.6.7",
+    "firmware_sha256": "0xd6d1bd90bb6215e33584de37ccf8302a0af60520b8efd379e57c19079baf604e",
+    "sbom_hash": "0xebc36565961be8d6a46c969044526163522fc94188a0283ae0fa8fc59513f021",
+    "release_date": "2024-07-27"
+  },
+  {
+    "vendor": "Cisco",
+    "model": "Catalyst 9500",
+    "version": "17.6.1",
+    "firmware_sha256": "0x4767b1de42e50fa0c37afc220054938ffb20073a5cd62ab9100a166ab123231d",
+    "sbom_hash": "0x55abbd22f26e43c7f345a58d8723e7e6bde8224279d697ead2a0806888b56f9b",
+    "release_date": "2025-09-05"
+  },
+  {
+    "vendor": "Philips Healthcare",
+    "model": "IntelliVue",
+    "version": "2.3.1",
+    "firmware_sha256": "0xd91b3506e8eb1b6b3fe3b592d54899bcdf4c778fdcbd7e18d5b2c5bbc9382706",
+    "sbom_hash": "0xedb155a3c63266ae0f0f2eaae3a8c049b273d5a7aab37b4cc0d3da7b3563dc03",
+    "release_date": "2025-05-05"
+  },
+  {
+    "vendor": "GE Healthcare",
+    "model": "Centricity",
+    "version": "7.1",
+    "firmware_sha256": "0xaf88a1c6d40576e0bb7eb612fba06127e6c791b43cf0128c64b4a20f4559e42e",
+    "sbom_hash": "0x223a867049780daa158dadd50c949f6d90e6105c00a592a95422b89458fd957f",
+    "release_date": "2025-04-09"
+  },
+  {
+    "vendor": "Epic",
+    "model": "Epic EHR",
+    "version": "2023.1",
+    "firmware_sha256": "0xe1edc3b963d584c8f78605ba4da84f98e4195cc1fe45ed87ff27af715759a8da",
+    "sbom_hash": "0x80fc294e953dfa36c0048f64cbade12ef3359ba42ec6f7ab292775500edef974",
+    "release_date": "2025-07-30"
+  },
+  {
+    "vendor": "Baxter",
+    "model": "Sigma Spectrum",
+    "version": "8.0.2",
+    "firmware_sha256": "0x3357550989da370c8d0e9dd9e04230505a4ca592e43f51e0371d56cf79b699cb",
+    "sbom_hash": "0x9504da0ce3f18b0cd4e346db59ad7d646448b84a24acd4bdb299213669d0a66c",
+    "release_date": "2026-04-19"
+  },
+  {
+    "vendor": "Palo Alto Networks",
+    "model": "PA-3220",
+    "version": "10.2.1",
+    "firmware_sha256": "0x24200e591383968a846fccf8dd7758416fb4bc507399d708cabc4398ff88adc2",
+    "sbom_hash": "0x5158b6442b939676cad454b53e1f39019a05c8d46108e503174d134cab0e3a05",
+    "release_date": "2024-06-17"
+  },
+  {
+    "vendor": "Lenovo",
+    "model": "ThinkSystem SR650",
+    "version": "2023.03",
+    "firmware_sha256": "0x68faec24dc7fb443af3b7c1e151821ce92dcf6b713fa4894657275281c40538d",
+    "sbom_hash": "0x09bd7f7e4998e800fd4135a5931457e54bdc40b2fe88ca5c55ae3957294a9582",
+    "release_date": "2026-03-11"
+  },
+  {
+    "vendor": "Siemens",
+    "model": "Desigo CC",
+    "version": "5.1",
+    "firmware_sha256": "0xdb8f5a1a5fca7b093569056524dcc4ee5e059320a8a8a563ff171d78f6269320",
+    "sbom_hash": "0x6acd395c4b1c165ecdac32165541f1750c3c87cc956adfcc6b4ada15477a447f",
+    "release_date": "2024-07-03"
+  },
+  {
+    "vendor": "Honeywell",
+    "model": "Smart Building Sensor",
+    "version": "1.0.5",
+    "firmware_sha256": "0x76c31376f6f05512634dfe99304f6d9b22500b47cabd47e78396e210caf2e9b4",
+    "sbom_hash": "0x7135c429a2ae3baf8ed7d45a0d2abb0ebca7051f5091799eb353ae66c0493a34",
+    "release_date": "2025-01-20"
+  },
+  {
+    "vendor": "Siemens Healthineers",
+    "model": "Model-860",
+    "version": "3.6.1",
+    "firmware_sha256": "0x8c4bcb1ee4e189badda7b35e97b45efb7b6f3fe37d3a72a81b078acf4ed66dae",
+    "sbom_hash": "0x4825be41952cd70e7836c125bf8b624cbe9e10d76a8ec532d8f2120fddef7fc8",
+    "release_date": "2026-05-13"
+  },
+  {
+    "vendor": "Cisco",
+    "model": "Model-507",
+    "version": "5.3.1",
+    "firmware_sha256": "0xec33fa2aeff21d62d71c5a4ac349624ee94d57371b197fb500a084f6555428a4",
+    "sbom_hash": "0xf118e052154cd22e3654421ce4be0acaa850f04c4dbff66c611081da53f1b51b",
+    "release_date": "2024-04-21"
+  },
+  {
+    "vendor": "Palo Alto Networks",
+    "model": "Model-436",
+    "version": "3.9.0",
+    "firmware_sha256": "0x74a90a378891ff5759627fbe1ac3e1534c2d2ddca8164bf293a39a03e5e74cf6",
+    "sbom_hash": "0xf9e7390a3c86679470885a30970070a3f29fcce0d47da412be0a4adb0cc08b23",
+    "release_date": "2026-01-18"
+  },
+  {
+    "vendor": "Siemens Healthineers",
+    "model": "Model-216",
+    "version": "2.7.7",
+    "firmware_sha256": "0x056a4dedee183fd2997e43a8c8844c0d116d9a23704d842c97334b5ffa2e6c73",
+    "sbom_hash": "0x66bf4057f01162424c3b14ba2e173fd61000da5607ecaab8ed467c2f19048c10",
+    "release_date": "2026-08-09"
+  },
+  {
+    "vendor": "Cisco",
+    "model": "Model-602",
+    "version": "8.1.1",
+    "firmware_sha256": "0xb5ca0ece65f1d91f0d84c7df39eddc467b77c83a965b1841e39ec500f27fd6e9",
+    "sbom_hash": "0xb14ff25d06aeaa68493464a895d3b37a50c4ea2d029d7ec22699ebbde19268b1",
+    "release_date": "2024-12-14"
+  },
+  {
+    "vendor": "Palo Alto Networks",
+    "model": "Model-540",
+    "version": "8.3.6",
+    "firmware_sha256": "0xfb7c5a3446d764812578715d194ac7fe5c55462959950d85495b6af8c17167ce",
+    "sbom_hash": "0xdde5f689bbe39aaa916706018dd266900439254065ca7d3019c9f4413cc23c1c",
+    "release_date": "2025-05-27"
+  },
+  {
+    "vendor": "Cisco",
+    "model": "Model-951",
+    "version": "2.1.6",
+    "firmware_sha256": "0xe2e13c16ffa1dc59f646849b2f41ac13a03356fd6cd4c02736fddf9303f27149",
+    "sbom_hash": "0x4b8ba54e0c7ade25f1f79600052d0408d1b740bc2f573cb7a0e1ac515e56c3a2",
+    "release_date": "2024-04-19"
+  },
+  {
+    "vendor": "Cisco",
+    "model": "Model-723",
+    "version": "5.0.2",
+    "firmware_sha256": "0x2b9973dba09a76885e59d958a7782d278d576dd2877809783bf122a02c0f1721",
+    "sbom_hash": "0x2d15d87fed939421327bccee8bd5cb12545d8e9dedaf0d9ebc1d6c26dc4f9b29",
+    "release_date": "2025-09-16"
+  },
+  {
+    "vendor": "GE Healthcare",
+    "model": "Model-449",
+    "version": "3.5.4",
+    "firmware_sha256": "0xc65c2fce815b0b5a15ab2afae00141abeac2424d19a5b849fd4dccc01863cf3f",
+    "sbom_hash": "0x551ec70f8cc19ac9c7c273f2d3d4393abcf97d1569ce2b5a2eedbeb14419a260",
+    "release_date": "2025-03-13"
+  },
+  {
+    "vendor": "GE Healthcare",
+    "model": "Model-379",
+    "version": "4.8.1",
+    "firmware_sha256": "0x3411eb3d1228bdb27dcbb92eb775daf50ba39432ebbf6bdd74198f88b366ad71",
+    "sbom_hash": "0x1f328ac33a850fe616f3edf215d5e16f999d3f439e17e5e874fd414ca87e01df",
+    "release_date": "2024-02-18"
+  },
+  {
+    "vendor": "Philips Healthcare",
+    "model": "Model-435",
+    "version": "2.0.7",
+    "firmware_sha256": "0x76a83d014c05b790de36fb5c6471afb17321608617d1e31f1f9b1c00083f9e8d",
+    "sbom_hash": "0x42e944df25180beda1a9f08575e98510eb7591929d0d032e5a7c81251fa63212",
+    "release_date": "2026-06-18"
+  },
+  {
+    "vendor": "Siemens Healthineers",
+    "model": "Model-514",
+    "version": "7.4.1",
+    "firmware_sha256": "0xacced3270c8bae94581316e0fd6ed46c1d0e1e941f086e38086dc166204f7bdd",
+    "sbom_hash": "0xb881d4ec23f3e62551398a439c36ccafa816378ee51283ee0016c6ee3774c505",
+    "release_date": "2024-10-03"
+  },
+  {
+    "vendor": "GE Healthcare",
+    "model": "Model-991",
+    "version": "5.5.3",
+    "firmware_sha256": "0x033c3c0671954b513310e79a002159206e28530160c11c15dace80ea5d3481db",
+    "sbom_hash": "0xc5984cc61406e26d71e7cfed92cc1cd75b6076aa4b2edd983e1917068c3e7f96",
+    "release_date": "2024-05-18"
+  },
+  {
+    "vendor": "Siemens Healthineers",
+    "model": "Model-256",
+    "version": "2.2.7",
+    "firmware_sha256": "0x210c5faa56a4b2f0261809ffc73bd0b8db2e959f044c7341652319e2a0b7f943",
+    "sbom_hash": "0xbdf5b3a6a61cc22b8caf4c39a91b0bf44f3d52ce5d7ea616ae46f8cad9a482be",
+    "release_date": "2025-04-21"
+  },
+  {
+    "vendor": "GE Healthcare",
+    "model": "Model-562",
+    "version": "1.0.5",
+    "firmware_sha256": "0x211841334098b3d83f335bfb51b7534a73f94a3f67ac878c9b03bb7a14859cf6",
+    "sbom_hash": "0xf586f99b172e24d9c22a08db547a34e95771749816931b5756bbd5607e9a2c01",
+    "release_date": "2024-05-13"
+  }
+]

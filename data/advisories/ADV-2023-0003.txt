@@ -1,0 +1,26 @@
+Philips Security Advisory PSA-2023-003
+Critical Vulnerability in IntelliVue Patient Monitors
+
+Philips has identified a critical vulnerability in IntelliVue patient monitors that could allow remote manipulation of patient data and alarm settings.
+
+Affected Products:
+- IntelliVue MX800 firmware versions before 2.4.0
+- IntelliVue MX700 firmware versions before 2.4.0
+
+Vulnerability: Improper authentication in the HL7 interface allows unauthenticated remote attackers to:
+- Modify patient vital signs data
+- Disable or alter alarm thresholds
+- Access protected health information
+
+CVSS v3.1 Base Score: 9.1 (Critical)
+Exploitation: Confirmed exploitation in healthcare environments
+
+Immediate Actions Required:
+1. Apply firmware update 2.4.0 or later immediately
+2. Isolate affected devices on segmented network
+3. Monitor for unauthorized configuration changes
+4. Report any suspicious activity to Philips and relevant authorities
+
+This vulnerability poses direct risk to patient safety.
+
+Tracking: CVE-2023-9012

@@ -1,0 +1,19 @@
+Schneider Electric Security Notification SEVD-2023-145
+Path Traversal in EcoStruxure Products
+
+Schneider Electric is aware of a path traversal vulnerability in EcoStruxure Control Expert and Operator Terminal Expert.
+
+Affected Versions:
+- EcoStruxure Control Expert: 2023.1 and earlier
+- EcoStruxure Operator Terminal Expert: 2022 R2 and earlier
+
+An authenticated user could exploit this vulnerability to read arbitrary files on the server, potentially accessing sensitive configuration files, credentials, and project data.
+
+CVSS v3.1: 7.8 (High)
+Vector: CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N
+
+Remediation: Update to latest versions:
+- Control Expert 2024.1
+- Operator Terminal Expert 2023.1
+
+Tracking: CVE-2023-2468

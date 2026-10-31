@@ -1,0 +1,35 @@
+{
+  "power": {
+    "name": "Grid Utility",
+    "sector": "energy",
+    "admin_address": "0xe534dF82e02570742DF8db44507BCde7B8748295",
+    "agent_signer_address": "0xBDD3c12505025E54192f126aC5761CE6FA93C9B7",
+    "approver_addresses": [
+      "0x27effbbD98Ee8A12b866460e76CA04C787e958BB",
+      "0x7EF663C08C0321b74945c344446354cd3074C758",
+      "0xC6365387294763e81A94Abcce1795682257c089B"
+    ]
+  },
+  "water": {
+    "name": "Water Board",
+    "sector": "water",
+    "admin_address": "0xF04BfAD9694b69F947734E4273B227278b78015B",
+    "agent_signer_address": "0x5F89CcecC0aB84861255b1a91F3C7Cc74A272BDe",
+    "approver_addresses": [
+      "0x8F4A4e5A8F20C59d8a85eB0f0D0be725C05cF2FC",
+      "0x4234dae97FcC638D851C5E3ddd1BCed4de3Bf28a",
+      "0x537FF362E1438518A977F6b2C05e7a17A3d46CB6"
+    ]
+  },
+  "hospital": {
+    "name": "City Hospital",
+    "sector": "healthcare",
+    "admin_address": "0x0D9b0eE4ea21095BA5350F9151a5B2FedAdD5553",
+    "agent_signer_address": "0xf442cB6bB573800380A9253d83D50d7A43438cb6",
+    "approver_addresses": [
+      "0x90c2b411F385BeD4a046C5bE21558713F6759c3B",
+      "0xD668120c37d2782038fe2774175F9F989eacc3be",
+      "0xb9Cf57c0296c4E8c9424E2faf595bcB83A0D2d77"
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+[
+  {
+    "consumer_org": "water",
+    "consumer_service": "water-service-1",
+    "provider_org": "power",
+    "provider_service": "power-service-1",
+    "dependency_strength": "high",
+    "tolerance_minutes": 15
+  },
+  {
+    "consumer_org": "hospital",
+    "consumer_service": "hospital-service-3",
+    "provider_org": "water",
+    "provider_service": "water-service-3",
+    "dependency_strength": "high",
+    "tolerance_minutes": 30
+  },
+  {
+    "consumer_org": "hospital",
+    "consumer_service": "hospital-service-1",
+    "provider_org": "power",
+    "provider_service": "power-service-3",
+    "dependency_strength": "medium",
+    "tolerance_minutes": 60
+  },
+  {
+    "consumer_org": "water",
+    "consumer_service": "water-service-2",
+    "provider_org": "power",
+    "provider_service": "power-service-2",
+    "dependency_strength": "medium",
+    "tolerance_minutes": 120
+  },
+  {
+    "consumer_org": "hospital",
+    "consumer_service": "hospital-service-2",
+    "provider_org": "power",
+    "provider_service": "power-service-1",
+    "dependency_strength": "low",
+    "tolerance_minutes": 240
+  },
+  {
+    "consumer_org": "hospital",
+    "consumer_service": "hospital-service-2",
+    "provider_org": "water",
+    "provider_service": "water-service-1",
+    "dependency_strength": "medium",
+    "tolerance_minutes": 60
+  }
+]

@@ -1,0 +1,23 @@
+{
+  "advisory_id": "ADV-2023-0002",
+  "cve_ids": [
+    "CVE-2023-5678",
+    "CVE-2023-5679"
+  ],
+  "vendor": "Rockwell Automation",
+  "products": [
+    "PowerFlex 755",
+    "PowerFlex 753"
+  ],
+  "affected_version_ranges": [
+    "12.001 through 12.004",
+    "before 11.005"
+  ],
+  "cvss_base": 7.5,
+  "exploited_in_wild": false,
+  "epss_like": 0.42,
+  "matched_assets": [
+    "water-asset-001"
+  ],
+  "injection": false
+}
