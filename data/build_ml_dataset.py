@@ -92,6 +92,7 @@ def main() -> int:
         manifest["generators"][gen] = {
             "assets": n, "rows": int(len(df)), "positive_rate": round(float(df["label"].mean()), 4),
             "cves_drawn_from_type_matched_advisories": stats["typed"], "cves_drawn_from_sector_fallback": stats["sector_fallback"],
+            "cves_drawn_from_kev_enrichment": stats["kev_enrichment"],
             "rows_with_vulnerability": int(df["has_vulnerability"].sum()), "rows_known_exploited": int(df["any_known_exploited"].sum()),
             "attack_episodes": int((episodes["kind"] == "attack").sum()) if len(episodes) else 0, "leakage_audit": audit,
         }

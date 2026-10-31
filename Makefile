@@ -45,6 +45,19 @@ train-model:
 evaluate:
 	python -m backend.risk.evaluate_model
 
+# the whole ML chain, in order; every number in docs/ML_REPORT.md comes from these
+ml-all:
+	python data/build_ml_dataset.py
+	python -m backend.risk.train_model
+	python -m backend.risk.evaluate_model
+	python evaluation/band_thresholds.py
+	python evaluation/m4_backtest.py
+	python evaluation/sensitivity.py
+	python evaluation/m3_adversary.py
+	python evaluation/rigorous.py
+	python data/oracle_ceiling.py
+	python evaluation/report_tables.py
+
 # ============================================================================
 # CHAIN
 # ============================================================================

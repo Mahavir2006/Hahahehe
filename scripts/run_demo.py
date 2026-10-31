@@ -1,437 +1,199 @@
 #!/usr/bin/env python3
 """
-Automated end-to-end demo for CascadeShield.
-Runs the full 14-step demo as specified in the spec (§11).
-Uses the real agent APIs (not mocks).
+Automated end-to-end demo for CascadeShield (spec section 11): one command, a real local chain, real agents.
+
+    python scripts/run_demo.py          # exit code 0 only if every check passes
+
+Each step prints what happened and checks it. Everything is simulated (assets, telemetry, compromise labels);
+nothing connects to real infrastructure.
 """
 
-import asyncio
-import hashlib
+from __future__ import annotations
+
 import json
-import os
-import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
-# Add backend to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from backend.common.config import settings
-from backend.devchain import DevChain
-from backend.system import CascadeShieldSystem
-
-import logging
-
-logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
-logger = logging.getLogger("demo")
-
-# Colors for output
-class Colors:
-    GREEN = '\033[92m'
-    RED = '\033[91m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    BOLD = '\033[1m'
-    END = '\033[0m'
-
-def print_step(step_num: int, description: str):
-    print(f"\n{Colors.BLUE}{Colors.BOLD}=== STEP {step_num}: {description} ==={Colors.END}")
-
-def print_success(msg: str):
-    print(f"{Colors.GREEN}✓ {msg}{Colors.END}")
-
-def print_error(msg: str):
-    print(f"{Colors.RED}✗ {msg}{Colors.END}")
-
-def print_info(msg: str):
-    print(f"{Colors.YELLOW}ℹ {msg}{Colors.END}")
-
-def run_demo():
-    """Run the full 14-step demo."""
-    print(f"\n{Colors.BOLD}{Colors.BLUE}")
-    print("╔══════════════════════════════════════════════════════════════╗")
-    print("║        CascadeShield - Automated End-to-End Demo             ║")
-    print("║        AI-Based Critical Infrastructure Cyber-Risk Prediction ║")
-    print("╚══════════════════════════════════════════════════════════════╝")
-    print(Colors.END)
-
-    start_time = time.time()
-    all_passed = True
-    dc = None
-    system = None
-
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+for stream in (sys.stdout, sys.stderr):
     try:
-        # ============================================================
-        # STEP 1: Start chain, deploy, seed, generate data, start nodes
-        # ============================================================
-        print_step(1, "Start chain, deploy, seed, generate data, start 3 org nodes, API, indexer")
+        stream.reconfigure(encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
 
-        dc = DevChain(deploy=True)
-        deployment_file = dc.deployment_file
-        state_dir = Path("/tmp/cascadeshield-demo-state")
-        system = CascadeShieldSystem(dc.url, str(deployment_file), state_dir, llm_provider="offline")
-        boot = system.bootstrap(extra_unilateral=True)
+from backend.agents.framework import GateViolation  # noqa: E402
+from backend.common.chain import ChainRevert, org_id  # noqa: E402
+from backend.devchain import DevChain  # noqa: E402
+from backend.risk import model as M  # noqa: E402
+from backend.risk.inference import M1  # noqa: E402
+from backend.system import CascadeShieldSystem  # noqa: E402
 
-        print_success(f"Chain connected at block {system.chain.block_number()}")
-        for org_id in ["power", "water", "hospital"]:
-            org = system.chain.get_org(system.chain.org_id(org_id))
-            if org[0] != b"\x00" * 32:
-                print_success(f"Org {org_id} registered")
-            else:
-                print_error(f"Org {org_id} not found")
-                all_passed = False
+CHECKS: list = []
 
-        print_info(f"Bootstrap: {len(boot['edges'])} dependency edges, {len(boot['baseline'])} baseline attestations")
 
-        # ============================================================
-        # STEP 2: Bilateral dependency handshake
-        # ============================================================
-        print_step(2, "Bilateral dependency handshake: power↔water, water↔hospital, power↔hospital")
+def adv(n: int) -> str:
+    return (ROOT / "data" / "advisories" / f"ADV-2023-{n:04d}.txt").read_text(encoding="utf-8")
 
-        # Verify confirmed edges via cross-org graph
-        from backend.agents.cascade_agent import CascadeAgent
-        cascade = CascadeAgent(system.nodes["power"])
-        g = cascade.cross_graph()
-        confirmed_edges = [e for e in g.edges if e.confirmed]
-        unconfirmed = g.unconfirmed
 
-        edge_pairs = {("power", "water"), ("water", "hospital"), ("power", "hospital")}
-        confirmed_pairs = {(e.consumer_org, e.provider_org) for e in confirmed_edges}
+def step(n: int, title: str) -> None:
+    print(f"\n=== Step {n:>2}: {title}")
 
-        for pair in edge_pairs:
-            if pair in confirmed_pairs or (pair[1], pair[0]) in confirmed_pairs:
-                print_success(f"  {pair[0]} ↔ {pair[1]} edge CONFIRMED")
-            else:
-                print_error(f"  {pair[0]} ↔ {pair[1]} edge NOT confirmed")
-                all_passed = False
 
-        if len(unconfirmed) >= 1:
-            print_success(f"  {len(unconfirmed)} unconfirmed edge(s) correctly excluded from cascade")
-        else:
-            print_info("  No unconfirmed edges found (expected at least 1 from bootstrap)")
+def check(req: str, ok: bool, msg: str) -> bool:
+    CHECKS.append((req, bool(ok), msg))
+    print(f"   [{'PASS' if ok else 'FAIL'}] {msg}  ({req})")
+    return bool(ok)
 
-        # ============================================================
-        # STEP 3: Baseline risk attestations
-        # ============================================================
-        print_step(3, "Baseline risk attestations published by all three orgs")
 
-        for org_id in ["power", "water", "hospital"]:
-            base = boot["baseline"][org_id]
-            print_info(f"  {org_id}: aggregate={base['aggregate']:.1f}, attested={base['attested']} services")
-        print_success("All orgs published baseline risk attestations")
+def info(msg: str) -> None:
+    print(f"   - {msg}")
 
-        # ============================================================
-        # STEP 4: Firmware supply-chain check
-        # ============================================================
-        print_step(4, "Firmware supply-chain check: tampered assets flagged Mismatch")
 
-        total_mismatch = 0
-        for org_id in ["power", "water", "hospital"]:
-            res = system.nodes[org_id].supply_chain_check()
-            mismatches = {k: v for k, v in res.items() if v != "Match"}
-            total_mismatch += len(mismatches)
-            print_info(f"  {org_id}: {len(res)} assets checked, {len(mismatches)} mismatches")
+def events(s, contract, name):
+    s.indexer.sync()
+    return s.indexer.query(contract, name, limit=100000)
 
-        if total_mismatch > 0:
-            print_success(f"Tampered assets detected as Mismatch ({total_mismatch} total across orgs)")
-        else:
-            print_error("No tampered assets detected")
-            all_passed = False
 
-        # ============================================================
-        # STEP 5: Ingest headline advisory
-        # ============================================================
-        print_step(5, "Ingest headline advisory (affects substation gateway in power org)")
+def run() -> int:
+    dc = DevChain()
+    state = Path(tempfile.mkdtemp(prefix="cascadeshield-demo-"))
+    try:
+        step(1, "Start a local chain, deploy and seed the 6 contracts, start 3 org nodes")
+        dc.start()
+        s = CascadeShieldSystem(dc.url, str(dc.deployment_file), state, llm_provider="offline")
+        boot = s.bootstrap(extra_unilateral=True)
+        check("BC-ENV-01", s.chain.is_connected(), f"chain {s.chain.chain_id} at block {s.chain.block_number()}")
+        check("SEC-PRIV-04", all(v in ("confirmed", "registered") for v in boot["encryption_keys"].values()), "each org published its encryption key")
+        card = M1.get()
+        info(f"risk model M1 {card.version} ({card.meta['config']['estimator']}, {card.meta['calibration']['method']} calibration, trained on synthetic labels)")
 
-        advisory_path = Path(settings.data_dir) / "advisories" / "ADV-2023-0001.txt"
-        if advisory_path.exists():
-            advisory_text = advisory_path.read_text(encoding="utf-8")
-            res = system.ingest(advisory_text, source="CERT-In", orgs=["power"])
-            power_result = res["power"]
-            finding = system.nodes["power"].findings.get(power_result.get("pipeline_id", ""), {})
+        step(2, "Bilateral dependency handshakes (both sides must sign the same sealed terms)")
+        deps = json.loads((ROOT / "data" / "cross_org_dependencies.json").read_text(encoding="utf-8"))
+        confirmed = sum(bool(s.chain.call("AttestationRegistry", "isEdgeConfirmed", org_id(d["consumer_org"]), s.nodes[d["consumer_org"]].svc_hash(d["consumer_service"]),
+                                          org_id(d["provider_org"]), s.nodes[d["provider_org"]].svc_hash(d["provider_service"]))) for d in deps)
+        check("BC-ATT-D-01", confirmed == len(deps), f"{confirmed}/{len(deps)} declared edges confirmed on-chain")
+        check("BC-ATT-D-01", boot.get("unilateral") in ("confirmed", "duplicate"), "a one-sided edge was submitted and stays unconfirmed")
 
-            # Find the finding by content hash
-            content_hash = hashlib.sha256(advisory_text.encode()).hexdigest()
-            finding = None
-            for fid, f in system.nodes["power"].findings.items():
-                if f.get("content_hash") == content_hash:
-                    finding = f
-                    break
+        step(3, "Baseline risk attestations: commitments + sealed bands, nothing readable on-chain")
+        risk_ev = events(s, "AttestationRegistry", "RiskAttestationSubmitted")
+        check("BC-ATT-R-01", len(risk_ev) >= 9, f"{len(risk_ev)} service risk attestations published")
+        check("SEC-PRIV-01", all("riskBand" not in e["args"] for e in risk_ev), "no plaintext band in any attestation")
 
-            if finding:
-                print_success(f"Advisory ingested: {finding['advisory_id']}")
-                print_info(f"  CVEs: {finding.get('cve_ids', [])}")
-                print_info(f"  Vendor: {finding.get('vendor', 'Unknown')}")
-                print_info(f"  Matched assets: {len(finding.get('matches', []))}")
-                print_info(f"  Status: {finding.get('status')}")
-            else:
-                print_error("Headline advisory finding not found")
-                all_passed = False
-        else:
-            print_error("Headline advisory not found")
-            all_passed = False
+        step(4, "Firmware supply-chain check against FirmwareRegistry")
+        sc = boot["supply_chain"]
+        flagged = {o: sorted(k for k, v in r.items() if v != "Match") for o, r in sc.items()}
+        check("BC-FW-05", all(len(v) == 3 for v in flagged.values()), f"tampered/unknown firmware flagged: {flagged['power']}")
 
-        # ============================================================
-        # STEP 6: Risk agent scores → critical
-        # ============================================================
-        print_step(6, "Risk agent scores → critical; attestation updated → band change on-chain")
+        step(5, "Headline advisory arrives (every org checks it against its own inventory)")
+        res = s.ingest(adv(1), source="CERT-In")
+        st = {o: p["status"] for o, p in res.items()}
+        check("AG-ORC-01", st["power"] == "awaiting_approval", f"pipeline status per org: {st}")
+        check("SEC-PRIV-02", all("matched" not in e["args"] for e in events(s, "AttestationRegistry", "FindingAttestationSubmitted")),
+              "finding attestations are blinded (the advisory and its outcome are not readable)")
 
-        # Find the finding and run risk assessment
-        finding = None
-        for fid, f in system.nodes["power"].findings.items():
-            if f.get("status") in ("matched", "injection") and f.get("cve_ids"):
-                finding = f
-                break
+        step(6, "Risk agent: M1 likelihood x impact, with the 'why'")
+        a = s.nodes["power"].assets["power-asset-001"]
+        sc1 = M.score_asset(a)
+        info(f"power-asset-001 risk {sc1['risk']} ({sc1['band']}); likelihood {sc1['likelihood']}, impact {sc1['impact']}")
+        for f in sc1["top_factors"][:3]:
+            info(f"  driver: {f['text']}")
+        check("AG-RSK-01", sc1["band"] in ("high", "critical"), "headline asset raised to high/critical")
+        ch = s.nodes["power"].feature_baseline["power-asset-001"]
+        from backend.risk.inference import what_changed
 
-        if finding:
-            rk = system.orch["power"].risk.assess(finding, force_attest=True)
-            critical_assets = [a for a in rk["assessments"] if a.get("band") == "critical"]
-            for a in rk["assessments"]:
-                print_info(f"  Asset {a.get('asset_id')}: risk={a.get('risk', 0):.1f}, band={a.get('band')}")
-            if critical_assets:
-                print_success(f"Asset scored CRITICAL: {critical_assets[0].get('asset_id')}")
-            else:
-                print_info("  No CRITICAL assets (highest band: " + max((a.get('band', 'low') for a in rk['assessments']), key=lambda b: ['low','medium','high','critical'].index(b)) + ")")
-        else:
-            print_error("No finding available for risk assessment")
-            all_passed = False
+        wc = what_changed(ch, M.features_of(a))
+        check("RISK-03", bool(wc), "what changed since boot: " + "; ".join(c["sentence"] for c in wc[:2]))
 
-        # ============================================================
-        # STEP 7: Cascade agent computes cross-org chain
-        # ============================================================
-        print_step(7, "Cascade agent computes cross-org chain power→water→hospital, publishes AlertBus")
+        step(7, "Cascade agent: power -> water -> hospital, early warning on AlertBus (sealed)")
+        cs = res["power"]["stages"]["cascade"]
+        chain = cs["chain"]
+        for c in chain[:3]:
+            info(f"  {c['org']:9s} impacted in ~{c['time_to_impact_minutes']} min, p_degraded {c['p_degraded']}")
+        check("AG-CAS-02", [c["org"] for c in chain][:2] == ["water", "hospital"], "cascade reaches water, then hospital")
+        check("AG-CAS-05", bool(cs["alerts"]) and cs["alerts"][0]["status"] == "confirmed", f"{len(cs['alerts'])} sealed alert(s) published")
 
-        # Re-run cascade on power org with latest assessments
-        rk = system.orch["power"].risk.assess(None, force_attest=True)
-        cs = system.orch["power"].cascade.analyse(rk["all"])
-        chain = cs.get("chain", [])
-        print_success(f"Cascade computed: {len(chain)} nodes in chain")
-        for node in chain:
-            print_info(f"  {node.get('org')} / {node.get('service')}: p={node.get('p_degraded', 0):.2f}, tti={node.get('time_to_impact_minutes')}min")
+        step(8, "Planner proposes a constraint-respecting plan; Critic re-checks it independently")
+        plan = res["power"]["plan"]
+        v = res["power"]["stages"]["critic"]
+        info(f"plan {plan['plan_id']}: {len(plan['steps'])} steps, org risk {plan['risk_before']} -> {plan['risk_after']}")
+        check("AG-CRT-04", v["verdict"] == "APPROVE_FOR_GATE" and v["anchor_status"] == "anchored", "critic verdict anchored on AuditLog before the gate")
 
-        # Check chain order
-        orgs_in_chain = [n.get("org") for n in chain]
-        if "water" in orgs_in_chain:
-            print_success("  Water org appears in cascade chain (downstream of power)")
-        if "hospital" in orgs_in_chain:
-            print_success("  Hospital org appears in cascade chain (downstream of water)")
-
-        # Check alerts
-        alerts = cs.get("alerts", [])
-        if alerts:
-            print_success(f"  {len(alerts)} alert(s) published via AlertBus")
-        else:
-            print_info("  No alerts published (cross-org p below threshold)")
-
-        # ============================================================
-        # STEP 8: Planner produces plan, Critic passes
-        # ============================================================
-        print_step(8, "Planner produces plan; Critic passes; critic verdict anchored")
-
-        assessments = rk["all"]
-        plan = system.orch["power"].planner.plan(assessments, [finding["advisory_id"]] if finding else [], cs.get("cross_input"))
-        print_success(f"Plan created: {plan['plan_id']}")
-        print_info(f"  Steps: {len(plan['steps'])}")
-        print_info(f"  Risk before: {plan['risk_before']:.1f}, after: {plan['risk_after']:.1f}, delta: {plan['total_delta']:.1f}")
-
-        verdict = system.orch["power"].critic.review(plan)
-        if verdict["verdict"] == "APPROVE_FOR_GATE":
-            print_success("Critic verdict: APPROVE_FOR_GATE")
-        else:
-            print_error(f"Critic verdict: {verdict['verdict']}")
-            print_info(f"  Reasons: {verdict['reasons'][:3]}")
-            all_passed = False
-
-        # ============================================================
-        # STEP 9: HIGH step → requestApproval → approvals
-        # ============================================================
-        print_step(9, "Plan includes HIGH step → requestApproval → simulated approvers approve")
-
-        high_steps = [s for s in plan["steps"] if s.get("impact_class") == "HIGH"]
-        if high_steps:
-            print_info(f"  Plan has {len(high_steps)} HIGH impact step(s)")
-
-            # Request approval via orchestrator
-            final_plan = verdict.get("final_plan", plan)
-            final_plan["critic"] = {k: verdict[k] for k in ("verdict", "digest", "anchor_status")}
-            gate = system.orch["power"].request_gate(final_plan, verdict)
-
-            if gate["required"]:
-                rid = gate["request_id"]
-                print_info(f"  Approval request created: {rid}")
-                print_info("  Simulating approver votes (2 of 3 + safety officer)...")
-
-                # Simulate human approver votes
-                from backend.humans import HumanApprover
-                humans = system.humans["power"]
-                approvers = [0, 1, 2]  # 3 approvers
-                for i in approvers:
-                    try:
-                        humans.approve(rid, i)
-                        print_info(f"    Approver {i} voted APPROVE")
-                    except Exception as e:
-                        print_info(f"    Approver {i}: {e}")
-
-                view = humans.view(rid)
-                print_info(f"  Approval status: {view.get('status')}, approvals: {view.get('approvals', 0)}/{view.get('required', '?')}")
-                if view.get("status") == "Approved":
-                    print_success("Approval threshold reached")
-                else:
-                    print_error("Approval threshold not reached")
-                    all_passed = False
-            else:
-                print_info("  No gate required (LOW-only plan)")
-        else:
-            print_info("  No HIGH impact steps in plan")
-
-        # ============================================================
-        # STEP 10: Executor verifies, executes, marks executed
-        # ============================================================
-        print_step(10, "Executor verifies chain state, executes, marks executed, re-scores")
-
-        # Continue after approval
+        step(9, "Human approval through ApprovalGate (the AI cannot vote)")
+        rid = res["power"]["request_id"]
+        h = s.humans["power"]
+        view = h.view(rid)
+        info(f"request {rid[:12]}... impact {view['impact']}, needs {view['required']} approval(s), safety officer: {view['needs_safety_officer']}")
         try:
-            rid = gate.get("request_id") if 'gate' in dir() else None
-            if rid and system.nodes["power"].pending_approvals.get(rid):
-                rec = system.orch["power"].continue_after_approval(rid)
-                print_success(f"Execution complete: actual_delta={rec.get('actual_delta', 0):.4f}, predicted={plan.get('total_delta', 0):.4f}")
-                drift = abs(rec.get('actual_delta', 0) - plan.get('total_delta', 0))
-                if drift <= 1e-6:
-                    print_success("  Actual delta equals predicted delta (drift <= 1e-6)")
-                else:
-                    print_error(f"  Delta drift: {drift}")
-                    all_passed = False
-            else:
-                print_info("  No pending approval to execute (LOW-only or already handled)")
-        except Exception as e:
-            print_error(f"  Execution failed: {e}")
-            all_passed = False
+            s.writer.submit("demo-agent-vote", "ApprovalGate", "approve", [bytes.fromhex(rid[2:])], "power/agent")
+            agent_blocked = False
+        except ChainRevert:
+            agent_blocked = True
+        check("BC-GATE-06", agent_blocked, "the agent's own vote is rejected by the contract")
+        for i in range(3):
+            if h.view(rid)["status"] != "Pending":
+                break
+            h.approve(rid, i)
+        check("BC-GATE-05", h.view(rid)["status"] == "Approved", "approved by human approvers")
 
-        # ============================================================
-        # STEP 11: Inject prompt-injection advisories
-        # ============================================================
-        print_step(11, "Inject prompt-injection advisories: show detection, no unauthorized action")
+        step(10, "Executor verifies the gate on-chain, applies the (simulated) plan, re-scores")
+        rec = s.orch["power"].continue_after_approval(rid)
+        info(f"predicted delta {plan['total_delta']}, actual {rec['actual_delta']}")
+        check("AG-PLN-05", rec["drift"] <= 1e-6, "realised risk reduction equals the what-if prediction")
+        check("AG-ACT-02", h.view(rid)["status"] == "Executed", "request marked Executed on-chain")
 
-        injection_advisories = [
-            Path(settings.data_dir) / "advisories" / "ADV-2023-0011.txt",
-            Path(settings.data_dir) / "advisories" / "ADV-2023-0012.txt",
-        ]
+        step(11, "Downstream orgs receive the alert, acknowledge it and harden")
+        rea = s.react_all()
+        check("AG-CAS-06", bool(rea["water"]["reacted"]) and bool(rea["hospital"]["reacted"]), f"water reacted to {len(rea['water']['reacted'])}, hospital to {len(rea['hospital']['reacted'])} alert(s)")
+        check("SEC-PRIV-03", all(r.get("disclosure_verified") for r in rea["water"]["reacted"]), "alert severity opened and verified against its commitment")
 
-        for adv_path in injection_advisories:
-            if adv_path.exists():
-                text = adv_path.read_text(encoding="utf-8")
-                res = system.ingest(text, source="test", orgs=["power"])
-                power_result = res["power"]
+        step(12, "Prompt-injection advisories are treated as data")
+        before = len(events(s, "ApprovalGate", "ApprovalRequested"))
+        inj = [s.ingest(adv(n), source="feed") for n in (11, 12)]
+        check("AG-INT-02", all(p["status"] == "injection_blocked" for r in inj for p in r.values()), "both injected advisories blocked in every org")
+        check("AG-SAF-01", len(events(s, "ApprovalGate", "ApprovalRequested")) == before, "no approval request was created by them")
 
-                # Find the finding
-                content_hash = hashlib.sha256(text.encode()).hexdigest()
-                finding = None
-                for fid, f in system.nodes["power"].findings.items():
-                    if f.get("content_hash") == content_hash:
-                        finding = f
-                        break
+        step(13, "Bypass attempts")
+        try:
+            s.orch["power"].executor.execute(plan, None)
+            bypass = False
+        except GateViolation:
+            bypass = True
+        check("AG-ACT-02", bypass, "executing without an approved request is refused")
+        try:
+            s.writer.submit("demo-skip-critic", "ApprovalGate", "requestApproval", [org_id("power"), b"\x05" * 32, b"\x06" * 32, 2, int(time.time()) + 9_999_999, b"\x07" * 32], "power/agent")
+            skip = False
+        except ChainRevert as e:
+            skip = e.name == "CriticVerdictNotAnchored"
+        check("AG-CRT-05", skip, "requesting approval without an anchored critic verdict is refused by the contract")
 
-                if finding and finding.get("injection_suspected"):
-                    print_success(f"  {adv_path.stem}: Injection detected (confidence={finding.get('extraction_confidence', 0):.2f})")
-                    print_info(f"  Status: {finding.get('status')} (no remediation driven by injection)")
-                else:
-                    print_error(f"  {adv_path.stem}: Injection NOT detected!")
-                    all_passed = False
-            else:
-                print_info(f"  {adv_path.stem}: advisory file not found")
-
-        # ============================================================
-        # STEP 12: Tamper demonstration
-        # ============================================================
-        print_step(12, "Tamper demonstration: modify trace file → verify_audit fails at exact index")
-
-        trace_dir = system.state_dir / "traces" / "power"
-        trace_files = sorted(trace_dir.glob("*.json"))
-        if trace_files:
-            trace_file = trace_files[0]
-            with open(trace_file) as f:
-                original = f.read()
-
-            # Tamper
-            tampered = original[:-2] + "X" + original[-1:]
-            with open(trace_file, "w") as f:
-                f.write(tampered)
-
-            # Verify should fail
-            verify_result = system.nodes["power"].audit.verify()
-            if not verify_result.get("ok"):
-                print_success(f"  Audit verification correctly FAILS at index {verify_result.get('first_mismatch')}: {verify_result.get('reason')}")
-            else:
-                print_error("  Audit verification should have failed but passed")
-                all_passed = False
-
-            # Restore
-            with open(trace_file, "w") as f:
-                f.write(original)
-            verify_result2 = system.nodes["power"].audit.verify()
-            if verify_result2.get("ok"):
-                print_success("  Restored trace, audit verification passes again")
-            else:
-                print_error("  Restored trace still fails verification")
-                all_passed = False
-        else:
-            print_info("  No trace files found for tamper test")
-
-        # ============================================================
-        # STEP 13: Bypass attempts
-        # ============================================================
-        print_step(13, "Bypass attempts: agent signer tries approve/markExecuted without approval")
-
-        # Try to execute without approval (should fail)
-        plan_id = plan.get("plan_id") if 'plan' in dir() else None
-        if plan_id and system.nodes["power"].plans.get(plan_id):
-            try:
-                system.orch["power"].executor.execute(system.nodes["power"].plans[plan_id], None)
-                print_error("  Executor executed without approval (should have failed!)")
-                all_passed = False
-            except Exception as e:
-                print_success(f"  Execution without approval correctly rejected: {type(e).__name__}")
-
-        # Try to approve as agent signer (should fail at contract level)
-        print_info("  Agent signer cannot call approve() (enforced by ApprovalGate contract BC-GATE-06)")
-        print_success("  Bypass attempts correctly blocked")
-
-        # ============================================================
-        # STEP 14: Final PASS/FAIL checklist
-        # ============================================================
-        print_step(14, "Final PASS/FAIL checklist mapping to requirement IDs")
-
-        print(f"\n{Colors.BOLD}=== DEMO SUMMARY ==={Colors.END}")
-        print(f"Total time: {time.time() - start_time:.1f}s")
-        print(f"All checks passed: {all_passed}")
-
-        if all_passed:
-            print(f"\n{Colors.GREEN}{Colors.BOLD}✓ ALL 14 STEPS PASSED{Colors.END}")
-        else:
-            print(f"\n{Colors.RED}{Colors.BOLD}✗ SOME STEPS FAILED{Colors.END}")
-
-        return all_passed
-
-    except Exception as e:
-        print_error(f"Demo failed with exception: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+        step(14, "Audit: Merkle-anchor every trace, verify, then detect tampering")
+        s.flush_audit()
+        check("BC-AUD-07", all(v["ok"] for v in s.verify_audit().values()), "all three audit logs verify against the chain")
+        n = s.nodes["power"]
+        batch = next(e for e in n.audit._local_entries() if e["is_batch"])
+        f = n.audit.trace_dir / f"{batch['leaves'][0]}.json"
+        original = f.read_text(encoding="utf-8")
+        doc = json.loads(original)
+        doc["steps"][0]["tampered"] = True
+        f.write_text(json.dumps(doc), encoding="utf-8")
+        bad = n.audit.verify()
+        f.write_text(original, encoding="utf-8")
+        check("BC-AUD-07", bad["ok"] is False and bad["first_mismatch"] == batch["index"], f"tampered trace detected at entry {bad.get('first_mismatch')}")
+    except Exception as e:  # noqa: BLE001
+        check("DEMO", False, f"demo aborted: {type(e).__name__}: {e}")
     finally:
-        if dc:
-            dc.stop()
+        dc.stop()
 
-
-def main():
-    """Main entry point."""
-    try:
-        result = run_demo()
-        sys.exit(0 if result else 1)
-    except KeyboardInterrupt:
-        print("\nDemo interrupted")
-        sys.exit(1)
+    passed = sum(ok for _, ok, _ in CHECKS)
+    print(f"\n=== Checklist: {passed}/{len(CHECKS)} passed")
+    for req, ok, msg in CHECKS:
+        if not ok:
+            print(f"   FAIL {req}: {msg}")
+    return 0 if CHECKS and passed == len(CHECKS) else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(run())

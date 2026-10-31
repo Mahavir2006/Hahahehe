@@ -9,7 +9,7 @@ import Trust from './Trust'
 import ModelCard from './ModelCard'
 import './ps03.css'
 
-export const TABS = ['Overview', 'Asset detail', 'Detections', 'Plans and approvals', 'Trust', 'Model card', 'Pipeline'] as const
+export const TABS = ['Overview', 'Asset detail', 'Detections', 'Plans and approvals', 'Trust', 'Model card', 'Team dashboard'] as const
 export type Tab = (typeof TABS)[number]
 
 export default function Shell({ pipeline }: { pipeline: React.ReactNode }) {
@@ -46,6 +46,7 @@ export default function Shell({ pipeline }: { pipeline: React.ReactNode }) {
         ))}
       </nav>
       <main className="ps03-main">
+        <div className={tab === 'Team dashboard' ? 'team-view' : 'ps03-view'}>
         {tab === 'Overview' && (
           <Overview
             org={org}
@@ -60,7 +61,8 @@ export default function Shell({ pipeline }: { pipeline: React.ReactNode }) {
         {tab === 'Plans and approvals' && <Plans org={org} />}
         {tab === 'Trust' && <Trust org={org} />}
         {tab === 'Model card' && <ModelCard />}
-        {tab === 'Pipeline' && pipeline}
+        {tab === 'Team dashboard' && pipeline}
+        </div>
       </main>
     </div>
   )

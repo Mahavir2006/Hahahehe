@@ -1,0 +1,9 @@
+{
+  "source": "https://services.nvd.nist.gov/rest/json/cves/2.0?hasKev&resultsPerPage=500&startIndex=0",
+  "fetched_utc": "2026-10-31T18:08:07Z",
+  "nvd_total_results": 1765,
+  "rows": 1765,
+  "rows_without_cvss": 12,
+  "sha256": "94e7bbde4df37ed07fa48ffc10de4711d2b0dceba01fa3621002951b2dbb744f",
+  "notice": "This product uses data from the NVD API but is not endorsed or certified by the NVD."
+}

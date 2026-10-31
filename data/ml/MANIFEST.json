@@ -4,37 +4,38 @@
   "epss_source": "proxy",
   "files": {
     "episodes_a.csv": {
-      "sha256": "77507139af6a1219dad6309ae6b0aee63ffe6b2e8dfeebe998b38c408a7c7cf6"
+      "sha256": "5899dbeb45333a36bfa00c7acf4312d6e94ce982d5893f107296854ae76e9e32"
     },
     "episodes_b.csv": {
-      "sha256": "c1b737c8ade5638b621b7815cbda3be87827efbe6d469bfad5f6c49cbb2c8267"
+      "sha256": "3664c231c3c92e89dce98b66c1266a56770a20bf44f84577e925e9044f4da5e0"
     },
     "gen_a.csv": {
-      "sha256": "6afa0633b4f723a7d533f7c6de3ec6853aaf36da6489b2503b8aad856a92f5b3"
+      "sha256": "a3311dce4e9362f930cda9f9fefb489efeb8aaa9402f589edb816c474749efc0"
     },
     "gen_b.csv": {
-      "sha256": "502b2095b9f932f732c00ae7e507be7962cee6cc5af6bc16b971961801e8e660"
+      "sha256": "760ae69ba8eed85aa39e8728053afae1707a8dd10dcce9cd70b34a99700a4aa6"
     },
     "rules_eval.json": {
-      "sha256": "69cbbf894bc5964b9ef49cc37b26f5e3021cf0f54cd2b48f71eaf186c79175c4"
+      "sha256": "2ba1f20ef3b2981f669f9e1b9217f478040811a88e10c3b88cd60df28df74ad5"
     },
     "telemetry_a.csv.gz": {
-      "sha256": "82a061ee8a8e6e2cd5e213627e5fafaf432e96b16c7f1d057f4915590229dd6d"
+      "sha256": "b8915c0002dc1ecafed20d1c84cbcdf2edb06c853e0e2616d57c97a2c37b8370"
     },
     "telemetry_b.csv.gz": {
-      "sha256": "d64786a89b251cd5555aecacda7cc92d940aa801af17f74bc01a71d8e422effe"
+      "sha256": "55648a2c329fee2185c2cf530f6bac74bef4c64c5fecea87965e5e500cce0440"
     }
   },
   "generators": {
     "A": {
       "assets": 2000,
       "rows": 16000,
-      "positive_rate": 0.1687,
-      "cves_drawn_from_type_matched_advisories": 506,
-      "cves_drawn_from_sector_fallback": 2425,
-      "rows_with_vulnerability": 3112,
-      "rows_known_exploited": 54,
-      "attack_episodes": 1352,
+      "positive_rate": 0.1677,
+      "cves_drawn_from_type_matched_advisories": 1485,
+      "cves_drawn_from_sector_fallback": 1923,
+      "cves_drawn_from_kev_enrichment": 1174,
+      "rows_with_vulnerability": 3555,
+      "rows_known_exploited": 1156,
+      "attack_episodes": 1357,
       "leakage_audit": {
         "passed": true,
         "problems": [],
@@ -49,12 +50,13 @@
     "B": {
       "assets": 800,
       "rows": 6400,
-      "positive_rate": 0.1702,
-      "cves_drawn_from_type_matched_advisories": 251,
-      "cves_drawn_from_sector_fallback": 858,
-      "rows_with_vulnerability": 1225,
-      "rows_known_exploited": 21,
-      "attack_episodes": 343,
+      "positive_rate": 0.1722,
+      "cves_drawn_from_type_matched_advisories": 664,
+      "cves_drawn_from_sector_fallback": 658,
+      "cves_drawn_from_kev_enrichment": 530,
+      "rows_with_vulnerability": 1385,
+      "rows_known_exploited": 508,
+      "attack_episodes": 352,
       "leakage_audit": {
         "passed": true,
         "problems": [],

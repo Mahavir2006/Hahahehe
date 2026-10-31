@@ -18,6 +18,7 @@ dataset build's leakage audit enforce the time cut-off.
 |---|---|---|
 | CVE IDs, CVSS scores, advisory release dates, sector | CISA CSAF OT advisories snapshot (`data/real/vuln_snapshot.jsonl`) | **real**, time-matched to t |
 | Known-exploited flag | CISA KEV (`data/real/kev.jsonl`, CC0), using dateAdded <= t | **real**, time-matched |
+| Known-exploited CVEs for IT/perimeter and Windows-based assets | KEV entries with CVSS and publication dates from NVD (`data/real_extra/`), matched by vendor/product | **real**, time-matched |
 | Exploit probability | proxy `estimate_epss(cvss, kev_at_t)` | **proxy**: the real EPSS file is dated 2026-10-30 and not time-matched, so it is not used for training (`epss_source = proxy`) |
 | Assets, zones, exposure, credentials, ports, patch history, firmware state | `data/ml_population.py` | simulated, with correlated draws |
 | Network/OT telemetry and injected episodes | `data/telemetry.py` | simulated |
@@ -42,43 +43,39 @@ integer basis points, the cascade engine, the planner's what-if wiring, the crit
 
 ## 4. Key findings, in plain words
 
-1. **Two bugs found by rigorous testing were fixed, and M1 retrained** (`docs/ML_DECISIONS.md` section 4): SHAP
-   explanations did not add up (error up to 0.74 log-odds, now below 1e-14), and `num_dependents` meant direct
-   dependents in training but transitive dependents in live scoring (PSI 3.57). All numbers below are after the fix.
-2. **M1 ties logistic regression; it does not beat it.** On held-out generator A: ROC-AUC 0.7447 against B3's
-   0.7455, PR-AUC 0.5437 against 0.5475. Generator A is close to additive in log-odds, which suits a linear model.
-   M1 is kept because it guarantees that more exposure never lowers risk (0 monotonicity violations) and gives exact
-   SHAP explanations. Pass criterion P3 is not met.
-3. **M1 clearly beats the rule-of-thumb baselines.** PR-AUC 0.5437 against 0.249 (CVSS only) and 0.1824 (KEV only);
-   precision of the top 5 of a 25-asset dashboard 0.4375 against 0.3016 and 0.1656.
-4. **The spec target ROC-AUC 0.80 is not met** (0.7447 on held-out A). It was not used as a tuning goal; hidden
-   factors and label noise cap any model. `make verify-spec` reports this measured value (it used to return a
-   hard-coded 0.85).
-5. **Accuracy is the wrong yardstick here, and the alert threshold is aggressive.** With 17-18% positives, always
-   answering "safe" scores about 82% accuracy. At the operating threshold 0.12 (pre-registered rule: maximise F2,
-   which favours catching compromises) M1 catches 76% of compromises at precision 0.25, so accuracy is 0.557. The
-   threshold sweep shows the trade-off: at 0.3 accuracy is 0.846, precision 0.59, recall 0.41. Ranking does not use
-   the threshold.
-6. **Most of the AUC on A is "recovering the generator".** On generator B, ROC-AUC falls to 0.6678 (drop 0.0769).
-7. **Calibration made things slightly worse.** The base model was already close to calibrated (ECE 0.0123); the
-   pre-registered sigmoid step gives 0.0164. Pass criterion P5 is not met.
-8. **Telemetry carries the most signal**: removing it costs 0.1879 PR-AUC. Caveat: precursors are generated from
-   the labels by construction, so this mostly measures the simulation's assumption.
-9. **KEV rows are scarce**: only 9 snapshot CVEs are in KEV, giving 54 KEV rows in generator A (observed compromise
-   rate 0.685) and 6 in the test split, too few to evaluate that segment.
-10. **No drift inside the simulation; real drift on the demo assets.** Held-out A, later windows and generator B all
-    have prediction PSI below 0.02. The 75 demo assets differ from the training population (prediction PSI 0.3452):
-    they are patched less recently (about 390 days), carry no CVE until an advisory arrives and have no
-    supply-chain flags before the firmware check. That reflects the demo inventory, not a bug, but it means demo
-    scores sit at the edge of what M1 was trained on.
-11. **Band thresholds are derived from M1** by the rule fixed before computing them (50th / 80th / 95th percentile
-    of risk on held-out A): 8.91 / 15.03 / 38.74 after the retrain. The headline advisory raises `power-asset-001`
-    from 10.06 to 33.64 = high, which triggers the cross-org alert. Before any advisory, the 75 demo assets are
-    54 low, 19 medium, 2 high, 0 critical. Bands are relative ranks, not absolute probabilities.
+1. **Three rounds of fixes and improvements after the first build** (`docs/ML_DECISIONS.md` sections 4-6): SHAP
+   explanations did not add up (now exact to 1e-14); `num_dependents` meant different things in training and live
+   scoring (fixed); the alert threshold rule moved from F2 to F1; and known-exploited CVEs from KEV + NVD joined the
+   CVE pool (known-exploited rows in generator A: 54 -> 1,156). All numbers below are from the current model.
+2. **M1 is at the ceiling of what this data allows.** A model given the generator's exact formula for everything
+   observable plus the telemetry reaches ROC-AUC 0.7592; M1 reaches 0.7548 (98.3% of the reachable ceiling above
+   chance). Better modelling cannot add much; only more informative data can.
+3. **M1 ties logistic regression.** Held-out A: ROC-AUC 0.7548 vs 0.7572, PR-AUC 0.5531 vs 0.5542 (P3 not met).
+   Generator B: 0.7237 vs 0.7213 (M1 slightly ahead). M1 is kept for its monotonicity guarantee (0 violations) and
+   exact SHAP explanations.
+4. **M1 clearly beats rule-of-thumb ranking.** PR-AUC 0.5531 vs 0.3126 (CVSS only) and 0.2842 (KEV only); top-5
+   precision on a 25-asset dashboard 0.4609 vs 0.3484 and 0.3125.
+5. **Accuracy at the alert threshold is now meaningful.** At 0.36 (maximise F1): accuracy 0.8588 vs 0.8234 for
+   "always safe", precision 0.6592, recall 0.4142, F1 0.5087. The F2 rule used before caught more compromises
+   (recall about 0.76) at precision 0.25 and accuracy 0.557. The threshold sweep shows the full trade-off.
+6. **Generalisation improved.** ROC-AUC drop from generator A to B fell from 0.0769 to 0.0311 after the KEV data
+   change. The spec target 0.80 is still not met (0.7548); it was never a tuning goal.
+7. **Known-exploited assets are now evaluable**: 232 test rows (was 6), ROC-AUC 0.7526, recall 0.9007 in that segment.
+8. **Calibration still slightly worsens ECE** (0.0152 -> 0.0165): the base model was already close to calibrated.
+   P5 not met.
+9. **Telemetry matters but less than before** (removing it costs 0.1117 PR-AUC, was 0.1879). Precursors are drawn
+   from the labels by construction, so treat this as a property of the simulation.
+10. **No drift inside the simulation; strong drift on the demo assets.** Held-out A, later windows and generator B
+    have prediction PSI of at most 0.0241. The 75 demo assets have prediction PSI 1.1078: before any advisory they
+    carry no CVE (training rows often do, more so now with KEV), are patched less recently and have no supply-chain
+    flags yet. That reflects the demo inventory; demo scores sit at the edge of the training distribution.
+11. **Bands and the demo.** Thresholds re-derived by the declared rule: 7.8 / 14.62 / 44.84. Before any advisory
+    the demo assets are 51 low, 22 medium, 2 high, 0 critical; the headline advisory moves `power-asset-001` from
+    10.3 to 45.44 = critical, with "Known exploited (CISA KEV)" as the top driver, which triggers the cross-org
+    alert. Bands are relative ranks, not absolute probabilities.
 12. **The on-chain privacy layer holds for identities, not for timing.** M3 maps a hash to its named service at
     0.319 against 0.2592 chance, but infers "this service is currently high/critical" from attestation and alert
-    timing at 0.8271 against a 0.6667 majority baseline. This rests on the adversary simulation's own assumption that
-    busy services are hot; it supports the residual risk listed in `docs/THREAT_MODEL.md`.
+    timing at 0.8271 against a 0.6667 majority baseline (an assumption-driven simulation; see `docs/THREAT_MODEL.md`).
 
 ## 5. Results
 
@@ -86,80 +83,80 @@ integer basis points, the cascade engine, the planner's what-if wiring, the crit
 
 | Evaluation | Model | roc_auc | pr_auc | brier | ece | precision_at_threshold | recall_at_threshold | top5_precision | top10_precision |
 |---|---|---|---|---|---|---|---|---|---|
-| A_grouped (n=3200, positives=565) | M1 | 0.7447 | 0.5437 | 0.1127 | 0.0164 | 0.2515 | 0.7628 | 0.4375 | 0.3023 |
-| A_grouped (n=3200, positives=565) | B1_cvss_only | 0.5989 | 0.249 | n/a | n/a | 0.3152 | 0.3381 | 0.3016 | 0.2203 |
-| A_grouped (n=3200, positives=565) | B2_known_exploited | 0.5042 | 0.1824 | n/a | n/a | 0.8333 | 0.0088 | 0.1656 | 0.1617 |
-| A_grouped (n=3200, positives=565) | B3_logistic | 0.7455 | 0.5475 | 0.1122 | 0.0216 | 0.2632 | 0.7575 | 0.4469 | 0.3 |
-| A_time (n=800, positives=158) | M1 | 0.7495 | 0.6096 | 0.1155 | 0.022 | 0.2782 | 0.7658 | 0.55 | 0.3375 |
-| A_time (n=800, positives=158) | B1_cvss_only | 0.612 | 0.29 | n/a | n/a | 0.3537 | 0.3671 | 0.3688 | 0.275 |
-| A_time (n=800, positives=158) | B2_known_exploited | 0.5024 | 0.1994 | n/a | n/a | 0.5 | 0.0063 | 0.2438 | 0.2437 |
-| A_time (n=800, positives=158) | B3_logistic | 0.7527 | 0.6102 | 0.115 | 0.0358 | 0.2861 | 0.7532 | 0.5125 | 0.3438 |
-| B_all (n=6400, positives=1089) | M1 | 0.6678 | 0.3957 | 0.1258 | 0.0186 | 0.2332 | 0.7006 | 0.3414 | 0.2477 |
-| B_all (n=6400, positives=1089) | B1_cvss_only | 0.5867 | 0.2204 | n/a | n/a | 0.2973 | 0.3232 | 0.2617 | 0.218 |
-| B_all (n=6400, positives=1089) | B2_known_exploited | 0.5047 | 0.1746 | n/a | n/a | 0.5714 | 0.011 | 0.1891 | 0.1742 |
-| B_all (n=6400, positives=1089) | B3_logistic | 0.6632 | 0.3939 | 0.127 | 0.0327 | 0.2375 | 0.6758 | 0.3406 | 0.2512 |
+| A_grouped (n=3200, positives=565) | M1 | 0.7548 | 0.5531 | 0.1099 | 0.0165 | 0.6592 | 0.4142 | 0.4609 | 0.3117 |
+| A_grouped (n=3200, positives=565) | B1_cvss_only | 0.6525 | 0.3126 | n/a | n/a | 0.4203 | 0.3593 | 0.3484 | 0.2523 |
+| A_grouped (n=3200, positives=565) | B2_known_exploited | 0.6075 | 0.2842 | n/a | n/a | 0.6078 | 0.2496 | 0.3125 | 0.2164 |
+| A_grouped (n=3200, positives=565) | B3_logistic | 0.7572 | 0.5542 | 0.1103 | 0.0231 | 0.61 | 0.4513 | 0.4469 | 0.3109 |
+| A_time (n=800, positives=172) | M1 | 0.7641 | 0.6481 | 0.1184 | 0.0387 | 0.7767 | 0.4651 | 0.5688 | 0.3844 |
+| A_time (n=800, positives=172) | B1_cvss_only | 0.678 | 0.3793 | n/a | n/a | 0.4932 | 0.4186 | 0.4375 | 0.35 |
+| A_time (n=800, positives=172) | B2_known_exploited | 0.6336 | 0.3624 | n/a | n/a | 0.7027 | 0.3023 | 0.4063 | 0.3094 |
+| A_time (n=800, positives=172) | B3_logistic | 0.7762 | 0.6495 | 0.1194 | 0.0485 | 0.7333 | 0.5116 | 0.5687 | 0.3875 |
+| B_all (n=6400, positives=1102) | M1 | 0.7237 | 0.4828 | 0.1168 | 0.01 | 0.5865 | 0.363 | 0.4086 | 0.2824 |
+| B_all (n=6400, positives=1102) | B1_cvss_only | 0.6543 | 0.287 | n/a | n/a | 0.3985 | 0.3793 | 0.343 | 0.2496 |
+| B_all (n=6400, positives=1102) | B2_known_exploited | 0.6137 | 0.2815 | n/a | n/a | 0.5807 | 0.2677 | 0.3109 | 0.225 |
+| B_all (n=6400, positives=1102) | B3_logistic | 0.7213 | 0.4831 | 0.1174 | 0.0185 | 0.538 | 0.392 | 0.4039 | 0.2824 |
 
 ### Two-generator drop
 
 | | Generator A (held-out) | Generator B | Drop |
 |---|---|---|---|
-| ROC-AUC | 0.7447 | 0.6678 | 0.0769 |
-| PR-AUC | 0.5437 | 0.3957 | 0.148 |
+| ROC-AUC | 0.7548 | 0.7237 | 0.0311 |
+| PR-AUC | 0.5531 | 0.4828 | 0.0703 |
 
 ### Calibration (sigmoid, grouped test split)
 
 | | Before | After |
 |---|---|---|
-| Brier | 0.1125 | 0.1127 |
-| ECE | 0.0123 | 0.0164 |
+| Brier | 0.1104 | 0.1099 |
+| ECE | 0.0152 | 0.0165 |
 
 | Bin | n before | predicted before | observed before | n after | predicted after | observed after |
 |---|---|---|---|---|---|---|
-| 0.0-0.1 | 1282 | 0.0811 | 0.0858 | 999 | 0.0878 | 0.0831 |
-| 0.1-0.2 | 1271 | 0.1338 | 0.1243 | 1491 | 0.1362 | 0.1154 |
-| 0.2-0.3 | 289 | 0.2423 | 0.2595 | 325 | 0.2422 | 0.2492 |
-| 0.3-0.4 | 91 | 0.3444 | 0.3846 | 113 | 0.3422 | 0.3363 |
-| 0.4-0.5 | 74 | 0.4494 | 0.4459 | 77 | 0.4525 | 0.4805 |
-| 0.5-0.6 | 57 | 0.5422 | 0.5965 | 59 | 0.5442 | 0.5763 |
-| 0.6-0.7 | 24 | 0.6504 | 0.75 | 25 | 0.6509 | 0.72 |
-| 0.7-0.8 | 34 | 0.7462 | 0.7941 | 35 | 0.7454 | 0.8286 |
-| 0.8-0.9 | 35 | 0.8544 | 0.9429 | 41 | 0.8592 | 0.9268 |
-| 0.9-1.0 | 43 | 0.9295 | 0.9767 | 35 | 0.9292 | 1.0 |
+| 0.0-0.1 | 1599 | 0.0773 | 0.0857 | 1381 | 0.0826 | 0.0854 |
+| 0.1-0.2 | 1044 | 0.132 | 0.1293 | 1213 | 0.1367 | 0.1171 |
+| 0.2-0.3 | 176 | 0.2426 | 0.3068 | 195 | 0.2465 | 0.2615 |
+| 0.3-0.4 | 94 | 0.3508 | 0.3723 | 94 | 0.3502 | 0.3191 |
+| 0.4-0.5 | 81 | 0.4467 | 0.4568 | 88 | 0.4515 | 0.5227 |
+| 0.5-0.6 | 48 | 0.5454 | 0.7083 | 61 | 0.5521 | 0.623 |
+| 0.6-0.7 | 47 | 0.6476 | 0.7872 | 45 | 0.6604 | 0.7778 |
+| 0.7-0.8 | 40 | 0.7444 | 0.775 | 41 | 0.7489 | 0.7561 |
+| 0.8-0.9 | 53 | 0.8567 | 0.9057 | 51 | 0.8541 | 0.902 |
+| 0.9-1.0 | 18 | 0.9329 | 0.9444 | 31 | 0.9288 | 0.9032 |
 
-### Ablations (uncalibrated, grouped test split; full model PR-AUC 0.5437, ROC-AUC 0.7447)
+### Ablations (uncalibrated, grouped test split; full model PR-AUC 0.5531, ROC-AUC 0.7548)
 
 | Dropped | PR-AUC | change | ROC-AUC | change |
 |---|---|---|---|---|
-| has_vulnerability | 0.5437 | 0.0 | 0.7447 | 0.0 |
-| supply_chain_flag | 0.5428 | -0.0009 | 0.7433 | -0.0014 |
-| telemetry | 0.3558 | -0.1879 | 0.6743 | -0.0704 |
+| has_vulnerability | 0.5531 | 0.0 | 0.7548 | 0.0 |
+| supply_chain_flag | 0.5517 | -0.0014 | 0.7538 | -0.001 |
+| telemetry | 0.4414 | -0.1117 | 0.7082 | -0.0466 |
 
-Label noise (+10% flipped training labels): ROC-AUC 0.7447 -> 0.7429 (-0.0018).
+Label noise (+10% flipped training labels): ROC-AUC 0.7548 -> 0.751 (-0.0038).
 
 Monotonicity (shipped model, 300 test rows): internet_exposed 0/300, default_credentials 0/300, any_known_exploited 0/300, days_since_patch 0/3000, max_cvss 0/3000, max_epss 0/3000, supply_chain_flag 0/300, open_mgmt_ports 0/3000 violations.
 
-Determinism: same model_version True, same artifact sha256 True, identical predictions True (version 79919736af73714c).
+Determinism: same model_version True, same artifact sha256 True, identical predictions True (version 1e50403a7534041c).
 
 ### Detection rules D (asset-window level)
 
 | Gen | Rule | Targets | Precision | Recall | TP | FP | FN | FP from benign anomalies |
 |---|---|---|---|---|---|---|---|---|
-| A | D1 | auth_bruteforce | 0.4549 | 0.9809 | 257 | 308 | 5 | 308 |
-| A | D2 | unexpected_remote | 0.295 | 0.957 | 267 | 638 | 12 | 638 |
-| A | D3 | lateral_movement | 0.9904 | 0.9196 | 206 | 2 | 18 | 1 |
-| A | D4 | abnormal_ot | 1.0 | 0.9733 | 146 | 0 | 4 | 0 |
-| A | D5 | unexpected_config | 0.4034 | 0.9906 | 211 | 312 | 2 | 312 |
-| A | D6 | exploit_indicator | 0.6124 | 0.8312 | 128 | 81 | 26 | 81 |
-| B | D1 | auth_bruteforce | 0.3112 | 0.9839 | 61 | 135 | 1 | 135 |
-| B | D2 | unexpected_remote | 0.2269 | 0.9516 | 59 | 201 | 3 | 201 |
-| B | D3 | lateral_movement | 1.0 | 0.9636 | 53 | 0 | 2 | 0 |
-| B | D4 | abnormal_ot | 1.0 | 0.95 | 38 | 0 | 2 | 0 |
-| B | D5 | unexpected_config | 0.2772 | 0.9808 | 51 | 133 | 1 | 133 |
-| B | D6 | exploit_indicator | 0.4819 | 0.8889 | 40 | 43 | 5 | 43 |
+| A | D1 | auth_bruteforce | 0.4348 | 0.9877 | 240 | 312 | 3 | 312 |
+| A | D2 | unexpected_remote | 0.2941 | 0.9816 | 267 | 641 | 5 | 641 |
+| A | D3 | lateral_movement | 0.9902 | 0.9486 | 203 | 2 | 11 | 1 |
+| A | D4 | abnormal_ot | 1.0 | 0.9737 | 148 | 0 | 4 | 0 |
+| A | D5 | unexpected_config | 0.382 | 0.9695 | 191 | 309 | 6 | 309 |
+| A | D6 | exploit_indicator | 0.6943 | 0.8598 | 184 | 81 | 30 | 81 |
+| B | D1 | auth_bruteforce | 0.3112 | 1.0 | 61 | 135 | 0 | 135 |
+| B | D2 | unexpected_remote | 0.2063 | 0.9455 | 52 | 200 | 3 | 200 |
+| B | D3 | lateral_movement | 1.0 | 0.8929 | 50 | 0 | 6 | 0 |
+| B | D4 | abnormal_ot | 1.0 | 1.0 | 25 | 0 | 0 | 0 |
+| B | D5 | unexpected_config | 0.2979 | 0.9333 | 56 | 132 | 4 | 132 |
+| B | D6 | exploit_indicator | 0.5657 | 0.8485 | 56 | 43 | 10 | 43 |
 
 ### M4 trend backtest
 
-2000 synthetic histories, forecast from day 30, horizon 30 days, 555 with a real crossing. MAE of crossing time: M4 3.129 days, naive last value 5.617 days. M4 anticipated 455 of 555 crossings.
+2000 synthetic histories, forecast from day 30, horizon 30 days, 597 with a real crossing. MAE of crossing time: M4 3.204 days, naive last value 5.971 days. M4 anticipated 480 of 597 crossings.
 
 ### M3 leakage adversary (20 runs, mean ± std)
 
@@ -175,102 +172,115 @@ Anonymity set (services in the same org with identical public observables): mean
 
 | Constant | Kendall tau (top 10) | Top-10 overlap |
 |---|---|---|
-| impact_w_criticality x0.8 | 1.0 | 9 |
-| impact_w_criticality x1.2 | 0.8667 | 9 |
-| impact_w_safety x0.8 | 0.9111 | 10 |
+| impact_w_criticality x0.8 | 0.8667 | 10 |
+| impact_w_criticality x1.2 | 0.9111 | 9 |
+| impact_w_safety x0.8 | 1.0 | 10 |
 | impact_w_safety x1.2 | 1.0 | 9 |
-| impact_w_dependents x0.8 | 1.0 | 9 |
+| impact_w_dependents x0.8 | 0.9111 | 10 |
 | impact_w_dependents x1.2 | 1.0 | 10 |
-| impact_w_service x0.8 | 0.9556 | 10 |
-| impact_w_service x1.2 | 1.0 | 9 |
+| impact_w_service x0.8 | 0.9111 | 9 |
+| impact_w_service x1.2 | 1.0 | 10 |
 | EDGE_WEIGHT x0.8 | 0.9444 | 9 |
 | EDGE_WEIGHT x1.2 | 1.0 | 9 |
 | SERVICE_WEIGHT x0.8 | 1.0 | 9 |
 | SERVICE_WEIGHT x1.2 | 1.0 | 9 |
 | BAND_P x0.8 | 1.0 | 9 |
 | BAND_P x1.2 | 1.0 | 9 |
-| STRENGTH_W x0.8 | 0.7647 | 9 |
-| STRENGTH_W x1.2 | 0.8824 | 9 |
-| monitoring_multiplier_0.85 x0.8 | 0.9556 | 9 |
-| monitoring_multiplier_0.85 x1.2 | 1.0 | 9 |
-| isolation_multiplier_0.3 x0.8 | 0.9556 | 10 |
-| isolation_multiplier_0.3 x1.2 | 0.8667 | 10 |
+| STRENGTH_W x0.8 | 0.8286 | 9 |
+| STRENGTH_W x1.2 | 0.9429 | 9 |
+| monitoring_multiplier_0.85 x0.8 | 0.7778 | 9 |
+| monitoring_multiplier_0.85 x1.2 | 0.8989 | 8 |
+| isolation_multiplier_0.3 x0.8 | 0.8667 | 10 |
+| isolation_multiplier_0.3 x1.2 | 1.0 | 10 |
 
 ### Data
 
-- Generator A: 2000 assets, 16000 rows, positive rate 0.1687, rows with a vulnerability 3112, rows known-exploited 54, CVEs from type-matched advisories 506, from sector fallback 2425, attack episodes 1352, leakage audit passed True.
-- Generator B: 800 assets, 6400 rows, positive rate 0.1702, rows with a vulnerability 1225, rows known-exploited 21, CVEs from type-matched advisories 251, from sector fallback 858, attack episodes 343, leakage audit passed True.
+- Generator A: 2000 assets, 16000 rows, positive rate 0.1677, rows with a vulnerability 3555, rows known-exploited 1156, CVEs from type-matched advisories 1485, from sector fallback 1923, attack episodes 1357, leakage audit passed True.
+  KEV-enrichment CVEs drawn (generator A): 1174.
+- Generator B: 800 assets, 6400 rows, positive rate 0.1722, rows with a vulnerability 1385, rows known-exploited 508, CVEs from type-matched advisories 664, from sector fallback 658, attack episodes 352, leakage audit passed True.
+  KEV-enrichment CVEs drawn (generator B): 530.
+
+### Accuracy ceiling (`data/oracle_ceiling.py`, 3200 held-out rows)
+
+| Model | ROC-AUC | PR-AUC |
+|---|---|---|
+| O1_observable_logit_oracle_no_telemetry | 0.7097 | 0.4502 |
+| O2_observable_oracle_plus_telemetry | 0.7592 | 0.5542 |
+| O3_true_probability_oracle | 0.7513 | 0.526 |
+| M1 | 0.7548 | 0.5531 |
+
+M1 share of the reachable ceiling (O2) above chance: 0.983. O3 needs the hidden factors, which no model can observe; the reachable ceiling is about O2.
 
 ### Band thresholds (rule: 50th / 80th / 95th percentile of M1 risk on the held-out grouped test split of generator A (docs/ML_DECISIONS.md section 3))
 
 | Boundary | Previous | Derived from M1 |
 |---|---|---|
-| low / medium | 25 | 8.91 |
-| medium / high | 50 | 15.03 |
-| high / critical | 75 | 38.74 |
+| low / medium | 25 | 7.8 |
+| medium / high | 50 | 14.62 |
+| high / critical | 75 | 44.84 |
 
-Computed over 3200 held-out rows; risk range 3.28 to 86.99.
+Computed over 3200 held-out rows; risk range 2.9 to 86.37.
 
-## Rigorous testing (`evaluation/rigorous.py`, model 79919736af73714c)
+## Rigorous testing (`evaluation/rigorous.py`, model 1e50403a7534041c)
 
 ### Classification metrics at the operating threshold, with grouped-bootstrap 95% intervals
 
 | Evaluation | Threshold | Accuracy | Always-negative accuracy | Balanced acc. | Precision | Recall | F1 | Specificity | MCC | TP / FP / FN / TN | ROC-AUC 95% CI | PR-AUC 95% CI | F1 95% CI |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| A_grouped | 0.12 | 0.5572 | 0.8234 | 0.638 | 0.2515 | 0.7628 | 0.3782 | 0.5131 | 0.211 | 431 / 1283 / 134 / 1352 | [0.7159, 0.7699] | [0.4903, 0.591] | [0.3454, 0.4095] |
-| A_time | 0.12 | 0.5613 | 0.8025 | 0.6288 | 0.274 | 0.7405 | 0.4 | 0.5171 | 0.2056 | 117 / 310 / 41 / 332 | [0.7063, 0.7963] | [0.5325, 0.6799] | [0.3528, 0.4528] |
-| B_all | 0.12 | 0.557 | 0.8298 | 0.6141 | 0.2332 | 0.7006 | 0.3499 | 0.5276 | 0.1716 | 763 / 2509 / 326 / 2802 | [0.6487, 0.6876] | [0.3595, 0.4287] | [0.3266, 0.3697] |
+| A_grouped | 0.36 | 0.8588 | 0.8234 | 0.6841 | 0.6592 | 0.4142 | 0.5087 | 0.9541 | 0.4471 | 234 / 121 / 331 / 2514 | [0.727, 0.7828] | [0.4981, 0.6038] | [0.4598, 0.5558] |
+| A_time | 0.36 | 0.8588 | 0.785 | 0.7222 | 0.7757 | 0.4826 | 0.595 | 0.9618 | 0.5363 | 83 / 24 / 89 / 604 | [0.7207, 0.8147] | [0.5712, 0.7224] | [0.5231, 0.6634] |
+| B_all | 0.36 | 0.8462 | 0.8278 | 0.6549 | 0.5865 | 0.363 | 0.4484 | 0.9468 | 0.379 | 400 / 282 / 702 / 5016 | [0.7023, 0.7428] | [0.4454, 0.5168] | [0.4134, 0.4775] |
 
 ### Threshold sweep (grouped test split of A)
 
 | Threshold | Accuracy | Precision | Recall | F1 | Specificity |
 |---|---|---|---|---|---|
 | 0.05 | 0.1766 | 0.1766 | 1.0 | 0.3001 | 0.0 |
-| 0.08 | 0.2256 | 0.1836 | 0.9823 | 0.3094 | 0.0634 |
-| 0.11 | 0.5075 | 0.2371 | 0.8071 | 0.3666 | 0.4433 |
-| 0.15 | 0.6969 | 0.3213 | 0.6442 | 0.4287 | 0.7082 |
-| 0.2 | 0.7953 | 0.4366 | 0.5487 | 0.4863 | 0.8482 |
-| 0.3 | 0.8462 | 0.5948 | 0.4053 | 0.4821 | 0.9408 |
-| 0.4 | 0.8578 | 0.7022 | 0.3381 | 0.4564 | 0.9693 |
-| 0.5 | 0.8588 | 0.7897 | 0.2726 | 0.4053 | 0.9844 |
-| 0.6 | 0.8559 | 0.8824 | 0.2124 | 0.3424 | 0.9939 |
+| 0.08 | 0.3178 | 0.1968 | 0.9292 | 0.3248 | 0.1867 |
+| 0.11 | 0.585 | 0.2652 | 0.7628 | 0.3936 | 0.5469 |
+| 0.15 | 0.7528 | 0.3803 | 0.6354 | 0.4758 | 0.778 |
+| 0.2 | 0.8247 | 0.5033 | 0.5398 | 0.5209 | 0.8858 |
+| 0.3 | 0.8538 | 0.618 | 0.4496 | 0.5205 | 0.9404 |
+| 0.4 | 0.8644 | 0.7066 | 0.3965 | 0.5079 | 0.9647 |
+| 0.5 | 0.8631 | 0.7773 | 0.315 | 0.4484 | 0.9806 |
+| 0.6 | 0.8584 | 0.8333 | 0.2478 | 0.382 | 0.9894 |
 
 ### Drift (PSI against the training split; < 0.1 stable, 0.1-0.25 moderate, >= 0.25 significant)
 
 | Comparison | Rows | Prediction PSI | Verdict | Features with significant PSI | Features with moderate PSI |
 |---|---|---|---|---|---|
-| A_test_vs_train | 3200 | 0.0111 | stable | none | none |
-| A_later_windows_vs_train | 800 | 0.016 | stable | none | none |
-| B_vs_train | 6400 | 0.0075 | stable | none | none |
-| demo_assets_vs_train | 75 | 0.3452 | significant | criticality, supply_chain_flag, open_mgmt_ports, days_since_patch, has_vulnerability, cve_count, max_cvss, max_epss, vuln_age_days, failed_auth_count | zone_ord, num_dependents, rule_hit_count |
+| A_test_vs_train | 3200 | 0.007 | stable | none | none |
+| A_later_windows_vs_train | 800 | 0.0241 | stable | none | none |
+| B_vs_train | 6400 | 0.0074 | stable | none | none |
+| demo_assets_vs_train | 75 | 1.1078 | significant | criticality, supply_chain_flag, open_mgmt_ports, days_since_patch, has_vulnerability, cve_count, max_cvss, max_epss, any_known_exploited, vuln_age_days, failed_auth_count | zone_ord, num_dependents, missing_epss, rule_hit_count |
 
 ### Performance by segment (grouped test split of A)
 
 | Segment | Value | n | Positive rate | ROC-AUC | Recall |
 |---|---|---|---|---|---|
-| sector | energy | 992 | 0.1643 | 0.7318 | 0.7853 |
-| sector | healthcare | 1304 | 0.1656 | 0.7567 | 0.7407 |
-| sector | water | 904 | 0.2058 | 0.7411 | 0.7688 |
-| zone | DMZ | 760 | 0.2079 | 0.7991 | 0.9177 |
-| zone | IT | 776 | 0.1714 | 0.7518 | 0.6842 |
-| zone | OT | 1320 | 0.1606 | 0.726 | 0.7217 |
-| zone | SAFETY | 344 | 0.1802 | 0.6762 | 0.6774 |
-| asset_type_known | known | 3104 | 0.174 | 0.7445 | 0.763 |
-| asset_type_known | unknown | 96 | 0.2604 | 0.7301 | 0.76 |
-| has_vulnerability | 0 | 2569 | 0.1429 | 0.6953 | 0.6485 |
-| has_vulnerability | 1 | 631 | 0.3138 | 0.7915 | 0.9747 |
-| known_exploited | 0 | 3194 | 0.1753 | 0.7431 | 0.7607 |
-| known_exploited | 1 | 6 | 0.8333 | metric undefined (single class or n < 30) |  |
-| internet_exposed | 0 | 2512 | 0.1505 | 0.7132 | 0.6746 |
-| internet_exposed | 1 | 688 | 0.2718 | 0.7818 | 0.9412 |
+| sector | energy | 992 | 0.1734 | 0.7702 | 0.4826 |
+| sector | healthcare | 1304 | 0.1603 | 0.7424 | 0.3349 |
+| sector | water | 904 | 0.2035 | 0.7529 | 0.4402 |
+| zone | DMZ | 760 | 0.1987 | 0.8158 | 0.5232 |
+| zone | IT | 776 | 0.1662 | 0.7568 | 0.3023 |
+| zone | OT | 1320 | 0.1735 | 0.7429 | 0.4061 |
+| zone | SAFETY | 344 | 0.1628 | 0.658 | 0.4107 |
+| asset_type_known | known | 3104 | 0.1753 | 0.7566 | 0.4154 |
+| asset_type_known | unknown | 96 | 0.2188 | 0.6952 | 0.381 |
+| has_vulnerability | 0 | 2510 | 0.1227 | 0.6636 | 0.1623 |
+| has_vulnerability | 1 | 690 | 0.3725 | 0.8018 | 0.716 |
+| known_exploited | 0 | 2968 | 0.1429 | 0.6956 | 0.2524 |
+| known_exploited | 1 | 232 | 0.6078 | 0.7526 | 0.9007 |
+| internet_exposed | 0 | 2512 | 0.1541 | 0.7276 | 0.3773 |
+| internet_exposed | 1 | 688 | 0.2587 | 0.7892 | 0.4944 |
 
-Seed stability (5 different split and model seeds): ROC-AUC 0.7378 ± 0.0078, PR-AUC 0.5028 ± 0.0197.
+Seed stability (5 different split and model seeds): ROC-AUC 0.7609 ± 0.0124, PR-AUC 0.5492 ± 0.0174.
 
-Robustness (ROC-AUC, grouped test split): clean 0.7447, multiplicative_noise_5pct 0.748, multiplicative_noise_10pct 0.7459, multiplicative_noise_20pct 0.7449, epss_missing_on_half_of_vulnerable_rows 0.7446, telemetry_feed_down 0.6726.
+Robustness (ROC-AUC, grouped test split): clean 0.7548, multiplicative_noise_5pct 0.7557, multiplicative_noise_10pct 0.7564, multiplicative_noise_20pct 0.7556, epss_missing_on_half_of_vulnerable_rows 0.7542, telemetry_feed_down 0.7041.
 
-SHAP: additivity max error 4.88e-15 log-odds over 300 rows; higher value of a monotone feature gives higher SHAP: internet_exposed True, default_credentials True, any_known_exploited insufficient variation, days_since_patch True, max_cvss True, max_epss True, supply_chain_flag True, open_mgmt_ports True.
+SHAP: additivity max error 2.89e-15 log-odds over 300 rows; higher value of a monotone feature gives higher SHAP: internet_exposed True, default_credentials True, any_known_exploited True, days_since_patch True, max_cvss True, max_epss True, supply_chain_flag True, open_mgmt_ports True.
 
-Inference: 1000 fuzzed records (NaN, inf, strings, missing keys, out of range): 0 crashes, 0 out-of-range outputs, 0 non-integer outputs. Latency with SHAP: p50 4.1826 ms, p95 6.8464 ms; batch of 3200 rows in 7.8565 ms.
+Inference: 1000 fuzzed records (NaN, inf, strings, missing keys, out of range): 0 crashes, 0 out-of-range outputs, 0 non-integer outputs. Latency with SHAP: p50 4.6208 ms, p95 6.3326 ms; batch of 3200 rows in 7.1265 ms.
 
 What-if on every demo asset x every mitigating action: 600 pairs, risk increased in 0, inputs unchanged True. Reproducibility over 75 demo assets: identical risk_bp after reloading the model True, all basis points integers True.
 

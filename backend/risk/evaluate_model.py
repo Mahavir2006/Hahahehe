@@ -111,9 +111,9 @@ def evaluate() -> Dict[str, Any]:
     out: Dict[str, Any] = {"model_version": meta["model_version"], "config": meta["config"], "labels": "synthetic; simulated data", "evaluations": {}}
 
     b3, b3_info = fit_b3(s["train"])
-    b3_thr = T.f2_threshold(s["valid"]["label"].values, b3.predict_proba(s["valid"][FEATURES])[:, 1])
-    b1_thr = T.f2_threshold(s["valid"]["label"].values, b1(s["valid"]) / 10.0) * 10.0
-    out["baselines"] = {"B1": "rank by max CVSS (threshold by F2 on validation)", "B2": "known-exploited flag (CISA KEV), threshold 1",
+    b3_thr = T.f1_threshold(s["valid"]["label"].values, b3.predict_proba(s["valid"][FEATURES])[:, 1])
+    b1_thr = T.f1_threshold(s["valid"]["label"].values, b1(s["valid"]) / 10.0) * 10.0
+    out["baselines"] = {"B1": "rank by max CVSS (threshold by F1 on validation)", "B2": "known-exploited flag (CISA KEV), threshold 1",
                         "B3": {"model": "standard-scaled L2 logistic regression", **b3_info, "threshold": b3_thr}}
     # time split: M1 retrained on windows 0-5 of train assets only, calibrated on the calibration split
     m_time = T.fit(cfg, s["time_train"][FEATURES], s["time_train"]["label"])

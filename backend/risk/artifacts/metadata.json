@@ -1,6 +1,6 @@
 {
-  "model_version": "79919736af73714c",
-  "artifact_sha256": "fc598ccace582f302c2a126d461ecfc3aa8a6740019b1ab0cd61e286a47d4ef5",
+  "model_version": "1e50403a7534041c",
+  "artifact_sha256": "ca383487635efe439662bb9d73519d8e46ccd690945cff37dcc8a91995f11185",
   "features": [
     "asset_type_code",
     "zone_ord",
@@ -34,8 +34,8 @@
     "max_depth": 3,
     "l2_regularization": 1.0,
     "choice": {
-      "gbc_best_cv_pr_auc": 0.502269,
-      "hgb_monotonic_best_cv_pr_auc": 0.502665,
+      "gbc_best_cv_pr_auc": 0.557895,
+      "hgb_monotonic_best_cv_pr_auc": 0.561181,
       "shap_supports_hgb": true,
       "chosen": "hgb_monotonic",
       "rule": "use hgb_monotonic if its CV PR-AUC >= gbc CV PR-AUC - 0.01 and SHAP supports it"
@@ -43,17 +43,17 @@
   },
   "calibration": {
     "method": "sigmoid",
-    "positives_in_calibration_split": 276
+    "positives_in_calibration_split": 272
   },
   "operating_threshold": {
-    "value": 0.12,
-    "rule": "maximise F2 on the validation split"
+    "value": 0.36,
+    "rule": "maximise F1 on the validation split (was F2; docs/ML_DECISIONS.md section 5)"
   },
   "training_data": {
     "file": "data/ml/gen_a.csv",
-    "sha256": "6afa0633b4f723a7d533f7c6de3ec6853aaf36da6489b2503b8aad856a92f5b3",
+    "sha256": "a3311dce4e9362f930cda9f9fefb489efeb8aaa9402f589edb816c474749efc0",
     "rows_train": 9600,
-    "positive_rate_train": 0.1686
+    "positive_rate_train": 0.1659
   },
   "seed": 42,
   "sklearn": "1.9.1",
@@ -68,7 +68,7 @@
         "learning_rate": 0.05,
         "max_depth": 2
       },
-      "cv_pr_auc": 0.502093
+      "cv_pr_auc": 0.554355
     },
     {
       "config": {
@@ -77,7 +77,7 @@
         "learning_rate": 0.05,
         "max_depth": 3
       },
-      "cv_pr_auc": 0.499815
+      "cv_pr_auc": 0.553925
     },
     {
       "config": {
@@ -86,7 +86,7 @@
         "learning_rate": 0.1,
         "max_depth": 2
       },
-      "cv_pr_auc": 0.502269
+      "cv_pr_auc": 0.557895
     },
     {
       "config": {
@@ -95,7 +95,7 @@
         "learning_rate": 0.1,
         "max_depth": 3
       },
-      "cv_pr_auc": 0.495936
+      "cv_pr_auc": 0.552862
     },
     {
       "config": {
@@ -104,7 +104,7 @@
         "learning_rate": 0.05,
         "max_depth": 2
       },
-      "cv_pr_auc": 0.502093
+      "cv_pr_auc": 0.554355
     },
     {
       "config": {
@@ -113,7 +113,7 @@
         "learning_rate": 0.05,
         "max_depth": 3
       },
-      "cv_pr_auc": 0.499815
+      "cv_pr_auc": 0.553925
     },
     {
       "config": {
@@ -122,7 +122,7 @@
         "learning_rate": 0.1,
         "max_depth": 2
       },
-      "cv_pr_auc": 0.502269
+      "cv_pr_auc": 0.557895
     },
     {
       "config": {
@@ -131,7 +131,7 @@
         "learning_rate": 0.1,
         "max_depth": 3
       },
-      "cv_pr_auc": 0.495936
+      "cv_pr_auc": 0.552862
     },
     {
       "config": {
@@ -141,7 +141,7 @@
         "max_depth": 3,
         "l2_regularization": 0.0
       },
-      "cv_pr_auc": 0.502586
+      "cv_pr_auc": 0.559211
     },
     {
       "config": {
@@ -151,7 +151,7 @@
         "max_depth": 3,
         "l2_regularization": 1.0
       },
-      "cv_pr_auc": 0.502665
+      "cv_pr_auc": 0.561181
     },
     {
       "config": {
@@ -161,7 +161,7 @@
         "max_depth": 3,
         "l2_regularization": 0.0
       },
-      "cv_pr_auc": 0.502019
+      "cv_pr_auc": 0.559184
     },
     {
       "config": {
@@ -171,7 +171,7 @@
         "max_depth": 3,
         "l2_regularization": 1.0
       },
-      "cv_pr_auc": 0.502343
+      "cv_pr_auc": 0.557568
     },
     {
       "config": {
@@ -181,7 +181,7 @@
         "max_depth": 3,
         "l2_regularization": 0.0
       },
-      "cv_pr_auc": 0.502586
+      "cv_pr_auc": 0.559211
     },
     {
       "config": {
@@ -191,7 +191,7 @@
         "max_depth": 3,
         "l2_regularization": 1.0
       },
-      "cv_pr_auc": 0.502665
+      "cv_pr_auc": 0.561181
     },
     {
       "config": {
@@ -201,7 +201,7 @@
         "max_depth": 3,
         "l2_regularization": 0.0
       },
-      "cv_pr_auc": 0.502019
+      "cv_pr_auc": 0.559184
     },
     {
       "config": {
@@ -211,7 +211,7 @@
         "max_depth": 3,
         "l2_regularization": 1.0
       },
-      "cv_pr_auc": 0.502343
+      "cv_pr_auc": 0.557568
     }
   ]
 }

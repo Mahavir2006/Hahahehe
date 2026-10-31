@@ -29,7 +29,7 @@ const why = {
 }
 
 describe('PS-03 dashboard', () => {
-  it('shows the simulation banner and every tab, including the original Pipeline page', () => {
+  it('shows the simulation banner and every tab, including the team dashboard', () => {
     const html = renderToStaticMarkup(<Shell pipeline={<p>pipeline page</p>} />)
     expect(html).toContain('Simulation only. No commands are sent to real OT equipment.')
     for (const t of TABS) expect(html).toContain(`>${t}<`)

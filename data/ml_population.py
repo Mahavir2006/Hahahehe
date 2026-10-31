@@ -6,6 +6,8 @@ What is real and what is simulated:
   data/real (sector-matched, product-keyword-matched where possible), with real CVSS scores, real release dates
   and real KEV membership, all time-matched to the window start t.
 * SIMULATED: the assets themselves, their configuration, patch history and network exposure.
+* REAL (enrichment): known-exploited CVEs from CISA KEV with CVSS and publication dates from NVD
+  (data/real_extra/nvd_kev.jsonl, scripts/fetch_nvd_kev.py), matched to asset types by vendor and product.
 * PROXY: EPSS. The real EPSS file in data/real is not time-matched, so the exploit-probability feature is the
   documented proxy `estimate_epss(cvss, known_exploited_at_t)` (epss_source = "proxy").
 
@@ -91,11 +93,25 @@ class Asset:
     cves: List[Dict[str, Any]] = field(default_factory=list)
 
 
-class CvePool:
-    """Real advisories grouped by sector and asset-type keyword, with KEV dates for time-matching."""
+# KEV vendor/product -> asset types it realistically runs on (all sectors). (vendor keyword, product keyword or None)
+KEV_TYPE_MAP: Dict[str, List[tuple]] = {
+    "firewall": [("fortinet", None), ("palo alto", None), ("sonicwall", None), ("juniper", "srx"), ("check point", None), ("zyxel", None),
+                 ("sophos", None), ("watchguard", None), ("cisco", "adaptive security"), ("cisco", "asa"), ("cisco", "firepower")],
+    "jump host": [("ivanti", None), ("pulse secure", None), ("citrix", None), ("microsoft", "remote desktop"), ("vmware", "horizon")],
+    "hospital network switch": [("cisco", "ios"), ("juniper", "junos")],
+}
+for _t in ("EHR server", "PACS server", "SCADA server", "historian", "SCADA historian", "HMI"):
+    KEV_TYPE_MAP[_t] = [("microsoft", "windows"), ("microsoft", "exchange"), ("microsoft", "sql"), ("vmware", "vcenter"), ("vmware", "esxi")]
+EXTRA = ROOT / "data" / "real_extra" / "nvd_kev.jsonl"
 
-    def __init__(self):
+
+class CvePool:
+    """Real advisories grouped by sector and asset-type keyword, plus KEV-listed CVEs (with NVD CVSS and dates)
+    matched to asset types by vendor/product. KEV date-added and publication dates allow time-matching."""
+
+    def __init__(self, use_kev_enrichment: bool = True):
         self.rows = []
+        self.kev_rows: List[dict] = []
         kev = {k["cveID"]: date.fromisoformat(k["dateAdded"]) for k in data_real.load_kev()}
         for v in data_real.load_vulns():
             self.rows.append({
@@ -106,13 +122,37 @@ class CvePool:
             })
         self.by_sector = {s: [r for r in self.rows if r["sector"] == s] for s in SECTOR_OF.values()}
         self._typed: Dict[tuple, List[dict]] = {}
+        known = {r["cve"] for r in self.rows}
+        if use_kev_enrichment and EXTRA.exists():
+            import json
+
+            for line in EXTRA.read_text(encoding="utf-8").splitlines():
+                k = json.loads(line)
+                if k["cve"] in known or k["cvss_base"] is None or not k["published"]:
+                    continue
+                self.kev_rows.append({"cve": k["cve"], "cvss": float(k["cvss_base"]), "sector": "any", "source": "kev",
+                                      "released": date.fromisoformat(k["published"][:10]), "kev_added": date.fromisoformat(k["kev_date_added"]),
+                                      "vendor": k["vendor"].lower(), "product": k["product"].lower(),
+                                      "text": f"{k['vendor']} {k['product']}".lower()})
+
+    def kev_for(self, asset_type: str) -> List[dict]:
+        rules = KEV_TYPE_MAP.get(asset_type, [])
+        kws = TYPES.get(asset_type, ("", {}, (1, 1), 0, 0, 0, []))[6]
+        ot = ("siemens", "schneider", "rockwell", "abb", "hitachi", "delta", "unitronics", "mitsubishi", "general electric", "honeywell")
+        out = []
+        for r in self.kev_rows:
+            if any(v in r["vendor"] and (p is None or p in r["product"]) for v, p in rules):
+                out.append(r)
+            elif any(v in r["vendor"] for v in ot) and any(k in r["text"] for k in kws):
+                out.append(r)
+        return out
 
     def candidates(self, sector: str, asset_type: str) -> tuple:
         key = (sector, asset_type)
         if key not in self._typed:
             kws = TYPES.get(asset_type, ("", {}, (1, 1), 0, 0, 0, []))[6]
             pool = [r for r in self.by_sector[SECTOR_OF[sector]] if any(k in r["text"] for k in kws)]
-            self._typed[key] = pool
+            self._typed[key] = pool + self.kev_for(asset_type)
         typed = self._typed[key]
         return (typed, True) if len(typed) >= 5 else (self.by_sector[SECTOR_OF[sector]], False)
 
@@ -169,6 +209,7 @@ def cve_context(a: Asset, t: date, pool: CvePool, rng: np.random.Generator, stat
         for j in rng.choice(len(fresh), size=k, replace=False):
             a.cves.append(fresh[int(j)])
         stats["typed" if typed else "sector_fallback"] += k
+        stats["kev_enrichment"] += sum(1 for c in a.cves[-k:] if c.get("source") == "kev")
     known = [c for c in a.cves if c["released"] <= t]
     if not known:
         return {"has_vulnerability": 0, "cve_count": 0, "max_cvss": 0.0, "max_epss": 0.0, "any_known_exploited": 0,
@@ -204,7 +245,7 @@ def build_population(n_assets: int, seed: int, prefix: str, pool: Optional[CvePo
     rng = np.random.default_rng(seed)
     pool = pool or CvePool()
     assets = make_assets(n_assets, rng, prefix)
-    rows, stats = [], {"typed": 0, "sector_fallback": 0}
+    rows, stats = [], {"typed": 0, "sector_fallback": 0, "kev_enrichment": 0}
     for w in range(N_WINDOWS):
         t = window_start(w)
         for a in assets:

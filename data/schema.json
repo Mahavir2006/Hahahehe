@@ -6,7 +6,7 @@
     "group": "asset",
     "source": "inventory",
     "real_or_simulated": "simulated",
-    "description": "asset type, with an explicit 'unknown' level",
+    "description": "asset type code (ordinal; explicit 'unknown' level)",
     "monotone_increasing": false
   },
   "zone_ord": {
@@ -46,7 +46,7 @@
     "group": "asset",
     "source": "dependency graph",
     "real_or_simulated": "simulated",
-    "description": "assets that depend on this one",
+    "description": "assets that DIRECTLY depend on this one",
     "monotone_increasing": false
   },
   "supply_chain_flag": {
