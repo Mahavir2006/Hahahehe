@@ -1,29 +1,22 @@
 import React, { useState, useEffect } from 'react'
 import './App.css'
+import Shell from './ps03/Shell'
 
-interface Org {
-  id: string
-  name: string
-  sector: string
-}
-
-interface Trace {
-  trace_id: string
-  advisory_id: string
-  org: string
-  started_at: string
-  status: string
-}
-
-function App() {
-  const [orgs, setOrgs] = useState<{id: string, name: string, sector: string}[]>([])
+// PS-03 (edit E3): the original page is kept as the "Pipeline" tab. Fixes inside it: the asset list was
+// fetched for 'power' only and stored as `orgs`; /api/traces returns a list (not {traces}); trace rows
+// carry label/steps (not advisory_id/started_at).
+function PipelinePage() {
+  const [assets, setAssets] = useState<any[]>([])
   const [selectedOrg, setSelectedOrg] = useState<string>('power')
   const [traces, setTraces] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetch('/api/orgs/power/assets').then(r => r.json()).then(setOrgs)
-  }, [])
+    fetch(`/api/orgs/${selectedOrg}/assets`, { headers: { 'X-Dev-Role': 'admin' } })
+      .then(r => r.json())
+      .then(d => setAssets(Array.isArray(d) ? d : []))
+      .catch(() => setAssets([]))
+  }, [selectedOrg])
 
   useEffect(() => {
     fetchTraces()
@@ -32,16 +25,16 @@ function App() {
   const fetchTraces = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/traces?org=${selectedOrg}`)
+      const res = await fetch(`/api/traces?org=${selectedOrg}`, { headers: { 'X-Dev-Role': 'admin' } })
       const data = await res.json()
-      setTraces(data.traces || [])
+      setTraces(Array.isArray(data) ? data : data.traces || [])
     } catch (e) {
       console.error(e)
     }
     setLoading(false)
   }
 
-  const handleAdvisorySubmit = async (e: React.FormEvent) => {
+  const handleAdvisorySubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     const text = formData.get('advisoryText') as string
@@ -89,9 +82,9 @@ function App() {
               <thead>
                 <tr>
                   <th>Trace ID</th>
-                  <th>Advisory</th>
+                  <th>Label</th>
                   <th>Org</th>
-                  <th>Started</th>
+                  <th>Steps</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -99,9 +92,9 @@ function App() {
                 {traces.map(t => (
                   <tr key={t.trace_id}>
                     <td>{t.trace_id}</td>
-                    <td>{t.advisory_id}</td>
+                    <td>{t.label}</td>
                     <td>{t.org}</td>
-                    <td>{new Date(t.started_at).toLocaleString()}</td>
+                    <td>{t.steps}</td>
                     <td><span className={`status-${t.status}`}>{t.status}</span></td>
                   </tr>
                 ))}
@@ -115,7 +108,7 @@ function App() {
           <div className="stats-grid">
             <div className="stat-card">
               <h3>Assets</h3>
-              <p className="stat-value">{orgs.length}</p>
+              <p className="stat-value">{assets.length}</p>
             </div>
             <div className="stat-card">
               <h3>Traces</h3>
@@ -130,6 +123,10 @@ function App() {
       </main>
     </div>
   )
+}
+
+function App() {
+  return <Shell pipeline={<PipelinePage />} />
 }
 
 export default App

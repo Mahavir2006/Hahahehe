@@ -70,10 +70,11 @@ class Reassessor:
         self.detectors = {org: Detector(org, n.inventory, simclock.ORIGINAL_DATE, self.seed, self.labels_path, self.gen) for org, n in self.nodes.items()}
         self.processed: set = set()
         self.last_timer_day: Optional[int] = None
-        for n in self.nodes.values():
+        for org, n in self.nodes.items():
             n.risk_log = []
             for aid, a in n.assets.items():
                 adapter.attach_live_features(a, n.inventory[aid])
+            self.detectors[org]._exposures(simclock.now_day(), simclock.now_date().isoformat(), n.assets)  # day-0 exposure findings
 
     # ------------------------------------------------------------------ scoring
     def _entry(self, org: str, trigger: str, key: Optional[str]) -> Dict[str, Any]:

@@ -1,0 +1,3 @@
+1.39s call     backend/tests/test_lifecycle.py::test_27_traces_are_anchored_in_merkle_batches_and_verify
+1.34s call     backend/tests/test_lifecycle.py::test_13_humans_approve_then_execution_matches_the_prediction
+================ 159 passed, 1 deselected in 94.30s (0:01:34) =================
