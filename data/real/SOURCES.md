@@ -1,6 +1,6 @@
 # data/real — sources
 
-Real public data, snapshotted by `scripts/build_real_snapshot.py` on **2026-10-31** (fetch_date 2026-10-31T12:56:47Z; rebuilt from the same source commits below).
+Real public data, snapshotted by `scripts/build_real_snapshot.py` on **2026-10-31** (fetch_date 2026-10-31T13:04:16Z; rebuilt from the same source commits below).
 Commit hashes, row counts and checksums are in `MANIFEST.json`; `backend/data_real.py` verifies them on every load.
 No clone or raw download is committed: only the derived files listed in the manifest.
 
@@ -39,7 +39,7 @@ No clone or raw download is committed: only the derived files listed in the mani
 ## 3. FIRST EPSS → `epss.jsonl`
 
 - URL: https://api.first.org/data/v1/epss (official FIRST API; documented at https://api.first.org/epss/ and
-  https://www.first.org/epss/data). Queried only for the 811 CVEs in `vuln_snapshot.jsonl`, in 9 requests; 801 returned.
+  https://www.first.org/epss/data). Queried only for the 948 CVEs in `vuln_snapshot.jsonl`, in 10 requests; 942 returned.
 - Scores are as of **2026-10-30** and are **not time-matched** to advisory dates (`time_matched: false`).
   `load_epss()` refuses any as-of date earlier than that.
 - Licence: no licence for the EPSS scores was found on the EPSS pages. Terms found:

@@ -60,11 +60,28 @@ def split_list(text: Optional[str]) -> List[str]:
     return [p.strip() for p in (text or "").split(",") if p.strip()]
 
 
+# One sector per advisory: the rarest of the three it lists wins (Water, then Healthcare, then Energy),
+# so the scarce sectors are not starved by advisories that also list Energy. Matching accepts the
+# official phrases plus the nonstandard spellings seen in the feed.
+SECTOR_PRIORITY = ["Water and Wastewater", "Healthcare and Public Health", "Energy"]
+SECTOR_RULE = "rarest listed sector first: Water and Wastewater > Healthcare and Public Health > Energy"
+
+
+def sector_matches(target: str, item: str) -> bool:
+    s = item.strip()
+    if s.lower().startswith("and "):
+        s = s[4:].strip()
+    if target == "Water and Wastewater":
+        return "Water and Wastewater" in s or "Wastewater" in s or s == "Water"
+    if target == "Healthcare and Public Health":
+        return "Healthcare" in s or "Public Health" in s
+    return target in s
+
+
 def assign_sector(sectors: List[str]) -> Optional[str]:
-    for s in sectors:
-        for target in SECTORS:
-            if target in s:
-                return target
+    for target in SECTOR_PRIORITY:
+        if any(sector_matches(target, s) for s in sectors):
+            return target
     return None
 
 
@@ -332,7 +349,7 @@ def main() -> int:
                     "dateReleased": kev_doc.get("dateReleased"), "count": kev_doc.get("count")},
             "epss": epss_info,
         },
-        "selection": {"per_sector_target": PER_SECTOR, "eligible_per_sector": sel["available"],
+        "selection": {"sector_rule": SECTOR_RULE, "per_sector_target": PER_SECTOR, "eligible_per_sector": sel["available"],
                       "picked_per_sector": {s: len(sel["picked"][s]) for s in SECTORS}, "fills": sel["fills"],
                       "max_cves_per_advisory": MAX_CVES},
     }

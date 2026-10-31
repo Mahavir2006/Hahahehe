@@ -1,13 +1,13 @@
 {
   "generated_by": "scripts/build_real_snapshot.py",
-  "fetch_date": "2026-10-31T12:56:47Z",
+  "fetch_date": "2026-10-31T13:04:16Z",
   "seed": 42,
   "checksum": "sha256 over file bytes with CRLF normalised to LF",
   "files": {
     "vuln_snapshot.jsonl": {
-      "sha256": "296050f93220a42a309933b61c89e47969f0f6c04ea895c556824c0089fc154f",
-      "rows": 812,
-      "bytes": 1874559
+      "sha256": "787bc254536612bde426a5b2f552ba6e15b46c386a8d527ca3e7dd848b9164d9",
+      "rows": 953,
+      "bytes": 2400635
     },
     "kev.jsonl": {
       "sha256": "b830bdbaa75488f99b615725f4648cc83cf47bedd2335ab15db6a1e96e812b5a",
@@ -15,9 +15,9 @@
       "bytes": 272003
     },
     "epss.jsonl": {
-      "sha256": "71891c39e2a8a8bbb1d1a52bd43713b44aa77f85d0590e284a92663dfe8125ac",
-      "rows": 801,
-      "bytes": 96576
+      "sha256": "8b9ee1befaa9420f708557d1ac0b871b884594a4427281bbc57f45a7bfa839e7",
+      "rows": 942,
+      "bytes": 113546
     }
   },
   "sources": {
@@ -50,30 +50,26 @@
       "asof_dates": [
         "2026-10-30"
       ],
-      "batches": 9,
-      "cves_requested": 811,
-      "cves_returned": 801,
-      "fetched_at": "2026-10-31T12:56:47Z"
+      "batches": 10,
+      "cves_requested": 948,
+      "cves_returned": 942,
+      "fetched_at": "2026-10-31T13:04:16Z"
     }
   },
   "selection": {
+    "sector_rule": "rarest listed sector first: Water and Wastewater > Healthcare and Public Health > Energy",
     "per_sector_target": 100,
     "eligible_per_sector": {
-      "Energy": 648,
-      "Water and Wastewater": 19,
-      "Healthcare and Public Health": 104
+      "Energy": 403,
+      "Water and Wastewater": 156,
+      "Healthcare and Public Health": 216
     },
     "picked_per_sector": {
       "Energy": 100,
       "Water and Wastewater": 100,
       "Healthcare and Public Health": 100
     },
-    "fills": {
-      "Water and Wastewater": {
-        "Energy": 77,
-        "Healthcare and Public Health": 4
-      }
-    },
+    "fills": {},
     "max_cves_per_advisory": 50
   }
 }
