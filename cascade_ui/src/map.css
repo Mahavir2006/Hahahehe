@@ -1,0 +1,95 @@
+/* Live threat map (India). Dark "operations" look by default, a light variant for the light theme. */
+:root {
+  --tm-sea: #060d16;
+  --tm-sea-2: #0a1726;
+  --tm-in: #2f8fc9;
+  --tm-in-base: #0b1a2a;
+  --tm-state: rgba(96, 176, 230, 0.28);
+  --tm-out: rgba(130, 160, 190, 0.5);
+  --tm-glow: rgba(47, 143, 201, 0.16);
+  --tm-city: #6f8aa6;
+  --tm-label: #e4ebf2;
+  --tm-halo: #060d16;
+}
+:root[data-theme="light"] {
+  --tm-sea: #eaf0f6;
+  --tm-sea-2: #dfe8f1;
+  --tm-in: #2a6f9e;
+  --tm-in-base: #f7fafc;
+  --tm-state: rgba(42, 111, 158, 0.3);
+  --tm-out: rgba(80, 100, 125, 0.38);
+  --tm-glow: rgba(42, 111, 158, 0.08);
+  --tm-city: #5f7389;
+  --tm-label: #0f1b2a;
+  --tm-halo: #ffffff;
+}
+
+.riskmap { position: relative; height: 560px; overflow: hidden; border-radius: var(--radius); background: radial-gradient(ellipse at 50% 45%, var(--tm-sea-2), var(--tm-sea) 70%); user-select: none; }
+.riskmap svg { width: 100%; height: 100%; display: block; touch-action: none; }
+.riskmap.zoomed svg { cursor: grab; }
+.riskmap.zoomed svg:active { cursor: grabbing; }
+.home-map .riskmap { height: 100%; border-radius: 0; background: radial-gradient(ellipse at 50% 45%, var(--tm-sea-2), var(--tm-sea) 70%); }
+
+.m-dot-in { fill: var(--tm-in); }
+.m-dot-out { fill: var(--tm-out); }
+.m-glow-a { stop-color: var(--tm-glow); }
+.m-glow-b { stop-color: transparent; }
+.m-state-base { fill: var(--tm-in-base); stroke: none; }
+.m-state { stroke: var(--tm-state); stroke-width: 0.6; stroke-linejoin: round; transition: fill-opacity .2s; }
+.m-state:hover { fill-opacity: 0.75; }
+.m-city { fill: var(--tm-city); font-size: 8px; letter-spacing: .03em; pointer-events: none; paint-order: stroke; stroke: var(--tm-halo); stroke-width: 2px; }
+
+/* assets */
+.riskmap .node { cursor: pointer; outline: none; transition: opacity .2s; }
+.m-node { stroke: var(--tm-halo); stroke-width: 1; }
+.m-node.sel { stroke: var(--tm-label); stroke-width: 1.8; }
+.m-node.down { stroke: var(--danger); stroke-width: 1.6; }
+.riskmap .node:focus-visible .m-node { stroke: var(--tm-label); stroke-width: 2.2; }
+.m-leader { stroke: var(--tm-state); stroke-width: .6; }
+.riskmap .lbl { fill: var(--tm-label); font-weight: 700; paint-order: stroke; stroke: var(--tm-halo); stroke-width: 2.4px; pointer-events: none; }
+.riskmap .pulse { fill: none; stroke-width: 1; animation: tm-pulse 1.8s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes tm-pulse { from { opacity: .9; transform: scale(.5); } to { opacity: 0; transform: scale(1.5); } }
+
+/* cascade links for the asset in focus */
+.m-cascade { fill: none; stroke: var(--danger); stroke-width: 1.4; stroke-dasharray: 3 2.5; animation: tm-dash .8s linear infinite; }
+.m-cascade.potential { stroke-opacity: .7; }
+@keyframes tm-dash { to { stroke-dashoffset: -11; } }
+
+/* attack arcs: faint trail + travelling comet + impact ring */
+.m-attack .m-trail { fill: none; stroke: var(--c); stroke-width: .7; stroke-opacity: .28; stroke-dasharray: 1 1; stroke-dashoffset: 1; animation: tm-draw 1.1s ease-out forwards, tm-fade 2.6s ease-in forwards; }
+.m-attack .m-comet { fill: none; stroke: var(--c); stroke-width: 2; stroke-linecap: round; stroke-dasharray: .12 1; stroke-dashoffset: 1.12; filter: drop-shadow(0 0 3px var(--c)); animation: tm-fly 1.1s cubic-bezier(.3,.1,.3,1) forwards; }
+.m-attack .m-impact { fill: none; stroke: var(--c); stroke-width: 1.2; opacity: 0; transform-box: fill-box; transform-origin: center; animation: tm-hit 1s ease-out 1s forwards; }
+@keyframes tm-draw { to { stroke-dashoffset: 0; } }
+@keyframes tm-fade { 70% { opacity: 1; } to { opacity: 0; } }
+@keyframes tm-fly { 90% { opacity: 1; } to { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes tm-hit { 0% { opacity: 1; transform: scale(.4); } to { opacity: 0; transform: scale(2.6); } }
+
+/* overlays */
+.map-zoom button:disabled { opacity: .35; cursor: default; }
+.threat-hud { position: absolute; left: 12px; top: 12px; width: 250px; padding: 10px 12px; border-radius: 12px; font-size: 12px; }
+.hud-head { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.hud-head b { margin-left: auto; color: var(--text); font-size: 13px; font-variant-numeric: tabular-nums; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 0 var(--danger); animation: live 1.6s infinite; }
+@keyframes live { 70% { box-shadow: 0 0 0 6px transparent; } }
+.threat-hud ul { display: grid; gap: 3px; }
+.threat-hud li { display: grid; grid-template-columns: 7px 1fr auto; gap: 8px; align-items: center; padding: 3px 0; animation: feed-in .3s ease; }
+.threat-hud li i { width: 7px; height: 7px; border-radius: 50%; }
+.threat-hud li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.threat-hud li strong { color: var(--text); font-weight: 600; }
+.threat-hud li small { font-size: 10.5px; }
+.hud-note { margin-top: 6px; font-size: 10.5px; color: var(--dim); }
+@keyframes feed-in { from { opacity: 0; transform: translateY(-4px); } }
+.map-legend { left: 12px; bottom: 12px; max-width: calc(100% - 24px); display: grid; gap: 4px; font-size: 10.5px; }
+.map-legend > div { gap: 3px 10px; }
+.map-legend b { font-weight: 600; color: var(--text); margin-left: 4px; }
+.map-legend b:first-child { margin-left: 0; }
+.map-legend i { width: 8px; height: 8px; }
+.map-credit { position: absolute; right: 10px; bottom: 6px; font-size: 9.5px; color: var(--dim); opacity: .8; pointer-events: none; }
+@media (max-width: 760px) {
+  .threat-hud { width: 200px; top: 8px; left: 8px; }
+  .threat-hud li:nth-child(n+4) { display: none; }
+  .map-legend { position: absolute; font-size: 9.5px; }
+  .map-legend > div:last-child { display: none; }
+  .map-credit { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .m-attack { display: none; } }
