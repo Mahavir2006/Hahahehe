@@ -19,3 +19,14 @@
 8. **On-chain confidentiality has residual metadata.** Values are hidden (SEC-PRIV), but the org-level dependency graph, timing and counts of attestations are visible to chain readers, and every consortium member can decrypt the shared bands/edges. See "What is still visible on-chain" in `docs/THREAT_MODEL.md`. Encryption keys are derived from the dev key files, which is not acceptable outside development.
 
 9. **No real-world remediation.** The ExecutorAgent mutates only simulated state (AG-ACT-01). No actual patches, credential rotations, or network changes are performed.
+
+## PS-03 additions (feature/ps03-completion)
+
+10. **Labels are synthetic.** The v1 model's label is a formula of its own features, so its committed AUC (0.898) is optimistic; results describe simulated data only.
+11. **Real data context is vendor-level.** Seeded CVEs (CISA CSAF OT snapshot) are matched to demo assets by vendor: 56 of 75 assets by vendor, 1 by model, 18 by sector fallback (measured). They describe plausible exposure, not confirmed exposure.
+12. **EPSS is not time-matched.** FIRST EPSS scores are as of 2026-10-30 and used as a static CVE property. Never use them for a back-test.
+13. **Detections are rules, not a trained detector.** Six deterministic rules over simulated telemetry. Their precision/recall (`backend/risk/artifacts/rules_metrics.json`) is circular, because the rules and the simulator were written together. R2 (unexpected remote access) has many false positives (precision 0.065).
+14. **Cascade and what-if constants are assumptions.** EDGE_WEIGHT, SERVICE_WEIGHT, BAND_P, STRENGTH_W, impact weights and what-if multipliers are hand-set; the "why" payload labels them. Their sensitivity was not measured (WP10 not done).
+15. **Trend is statistical.** Holt/EWMA over the reassessment log, back-tested only on synthetic histories against a weak naive baseline.
+16. **The dashboard is a local demo.** It talks to a local Hardhat chain and a local API; containment is simulated and never reaches equipment.
+17. **v1 cannot score a vulnerability without CVSS.** The existing intake fills a missing CVSS with 5.0; the PS-03 path never does, and seeded CVEs always carry a score.
