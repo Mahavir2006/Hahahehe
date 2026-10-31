@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import date
@@ -102,6 +103,7 @@ class RiskModel:
         self.model = joblib.load(art / "model.joblib")
         self.meta = json.loads((art / "metadata.json").read_text(encoding="utf-8"))
         self.version = self.meta["model_version"]
+        self.features: List[str] = list(self.meta.get("features", FEATURES))
         self._explainer = None
         try:
             import shap
@@ -115,15 +117,21 @@ class RiskModel:
     @classmethod
     def get(cls) -> "RiskModel":
         if cls._instance is None:
-            cls._instance = RiskModel()
+            d = os.environ.get("RISK_MODEL_DIR")
+            if d:  # fail closed: the adapter verifies hash + feature names, never falls back to v1
+                from backend.risk.adapter import load_validated
+
+                cls._instance = load_validated(Path(d))
+            else:
+                cls._instance = RiskModel()
         return cls._instance
 
     def likelihood(self, row: Dict[str, float]) -> float:
         """Pure function of the feature vector, so results are memoised (what-if analysis re-scores unchanged assets constantly)."""
-        key = tuple(float(row[f]) for f in FEATURES)
+        key = tuple(float(row[f]) for f in self.features)
         hit = self._cache.get(key)
         if hit is None:
-            hit = float(self.model.predict_proba(pd.DataFrame([list(key)], columns=FEATURES))[0, 1])
+            hit = float(self.model.predict_proba(pd.DataFrame([list(key)], columns=self.features))[0, 1])
             if len(self._cache) > 200_000:
                 self._cache.clear()
             self._cache[key] = hit
@@ -131,17 +139,17 @@ class RiskModel:
 
     def contributions(self, row: Dict[str, float]) -> Dict[str, float]:
         """SHAP values in log-odds per feature; falls back to baseline-occlusion if SHAP is unavailable."""
-        x = pd.DataFrame([[float(row[f]) for f in FEATURES]], columns=FEATURES)
+        x = pd.DataFrame([[float(row[f]) for f in self.features]], columns=self.features)
         if self._explainer is not None:
             sv = self._explainer.shap_values(x)
             sv = np.asarray(sv[1] if isinstance(sv, list) else sv)[0]
-            return {f: float(v) for f, v in zip(FEATURES, sv)}
+            return {f: float(v) for f, v in zip(self.features, sv)}
         if self._baseline is None:
             df = pd.read_csv(ROOT / "data" / "historical_incidents.csv")
             self._baseline = _frame(df).median().to_dict()
         p0 = self.model.predict_proba(x)[0, 1]
         out = {}
-        for f in FEATURES:
+        for f in self.features:
             xb = x.copy()
             xb[f] = self._baseline[f]
             out[f] = float(p0 - self.model.predict_proba(xb)[0, 1])
@@ -166,6 +174,7 @@ class AssetCtx:
     supply_chain_flag: bool = False
     likelihood_mult: float = 1.0
     isolated: bool = False
+    extra: Dict[str, float] = field(default_factory=dict)  # extra features (e.g. telemetry) for models that use them
 
 
 def days_since(last_patched: str) -> int:
@@ -176,7 +185,7 @@ def days_since(last_patched: str) -> int:
 def features_of(a: AssetCtx) -> Dict[str, float]:
     cvss = max((v.get("cvss", 0.0) for v in a.vulns), default=0.0)
     epss = max((v.get("epss", 0.0) for v in a.vulns), default=0.0)
-    return {
+    out = {
         "internet_exposed": float(a.internet_exposed),
         "cvss_base": float(cvss),
         "epss_like": float(epss),
@@ -188,6 +197,8 @@ def features_of(a: AssetCtx) -> Dict[str, float]:
         "safety_critical": float(a.safety_critical),
         "supply_chain_flag": float(a.supply_chain_flag),
     }
+    out.update(a.extra)  # a model only reads the features in its own list, so v1 ignores these
+    return out
 
 
 def impact_of(a: AssetCtx) -> float:
