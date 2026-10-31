@@ -40,3 +40,20 @@ The pass criteria in section 1 were written **before** the first training run an
 | Band hysteresis margin 2.0 risk points | none | A change of a few hundredths must not flip an on-chain band |
 | Mitigating actions change real features (patch: days_since_patch 0 and CVEs cleared; segment: not exposed; credentials: not default; disable port: one fewer management port; isolate: no exposure, no remote access, no management ports). Monitoring (x0.85) and the remaining isolation effect (x0.3) stay hand-set multipliers, documented as assumptions | multipliers for everything | The model is asked "what if this feature changed"; the two multipliers have no feature to act on |
 | The spec test that required AUC >= 0.80 now asserts determinism and that M1 beats the CVSS-only baseline | keep 0.80 as a test gate | The prompt forbids treating 0.80 as a tuning goal; the value is reported instead |
+
+## 3. Band thresholds derived from M1 (declared before computing them)
+
+Added after the first ML run: with M1 the old thresholds (25 / 50 / 75), which were set for the previous
+formula-fitted model, put the headline asset in "medium". The team chose to re-derive the thresholds from M1's own
+output by a rule fixed here **before** any value is computed or any demo test is re-run:
+
+- Population: every row of the held-out grouped test split of generator A (data/ml/gen_a.csv, `split()["test"]`).
+- Risk per row: `risk = risk_bp / 100` from the shipped M1 likelihood and the same `impact_of` formula, with service
+  criticality mapped from asset criticality (5 -> life_critical, 4 -> high, 3 -> medium, 1-2 -> low), because
+  population rows have no service.
+- Thresholds: low/medium boundary = 50th percentile, medium/high = 80th percentile, high/critical = 95th percentile
+  of that risk, rounded to 2 decimals. So, by construction, about 5% of asset-windows are critical and 20% are high
+  or critical.
+- Script: `evaluation/band_thresholds.py`, which writes the values into `metrics.json` (`band_thresholds`) and the
+  defaults in `backend/common/config.py`.
+- Whatever the demo then shows is reported as-is; the thresholds are not adjusted afterwards.
