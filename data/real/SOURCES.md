@@ -1,6 +1,6 @@
 # data/real — sources
 
-Real public data, snapshotted by `scripts/build_real_snapshot.py` on **2026-10-31** (fetch_date 2026-10-31T12:52:01Z).
+Real public data, snapshotted by `scripts/build_real_snapshot.py` on **2026-10-31** (fetch_date 2026-10-31T12:56:47Z; rebuilt from the same source commits below).
 Commit hashes, row counts and checksums are in `MANIFEST.json`; `backend/data_real.py` verifies them on every load.
 No clone or raw download is committed: only the derived files listed in the manifest.
 

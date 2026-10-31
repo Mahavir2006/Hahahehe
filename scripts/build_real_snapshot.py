@@ -99,18 +99,31 @@ def products_of(tree: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     return out
 
 
+AV_CODES = {"N": "NETWORK", "A": "ADJACENT_NETWORK", "L": "LOCAL", "P": "PHYSICAL"}
+
+
+def attack_vector(explicit: Optional[str], vector: Optional[str]) -> Optional[str]:
+    """The explicit field when CSAF gives it, else the AV: metric of the vector string; None if neither."""
+    if explicit:
+        return explicit
+    for part in (vector or "").split("/"):
+        if part.startswith("AV:"):
+            return AV_CODES.get(part[3:])
+    return None
+
+
 def pick_score(v: Dict[str, Any]) -> Dict[str, Any]:
     v3 = [s["cvss_v3"] for s in v.get("scores", []) if s.get("cvss_v3")]
     v2 = [s["cvss_v2"] for s in v.get("scores", []) if s.get("cvss_v2")]
     if v3:
         s = v3[0]
         return {"cvss_version": s.get("version"), "cvss_base": s.get("baseScore"), "cvss_vector": s.get("vectorString"),
-                "attack_vector": s.get("attackVector"), "cvss_v2_also_present": bool(v2),
+                "attack_vector": attack_vector(s.get("attackVector"), s.get("vectorString")), "cvss_v2_also_present": bool(v2),
                 "cvss_multiple_scores": len({x.get("baseScore") for x in v3}) > 1}
     if v2:
         s = v2[0]
         return {"cvss_version": s.get("version") or "2.0", "cvss_base": s.get("baseScore"), "cvss_vector": s.get("vectorString"),
-                "attack_vector": s.get("accessVector"), "cvss_v2_also_present": True,
+                "attack_vector": attack_vector(s.get("accessVector"), s.get("vectorString")), "cvss_v2_also_present": True,
                 "cvss_multiple_scores": len({x.get("baseScore") for x in v2}) > 1}
     return {"cvss_version": None, "cvss_base": None, "cvss_vector": None, "attack_vector": None,
             "cvss_v2_also_present": False, "cvss_multiple_scores": False}

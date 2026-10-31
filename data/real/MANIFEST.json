@@ -1,13 +1,13 @@
 {
   "generated_by": "scripts/build_real_snapshot.py",
-  "fetch_date": "2026-10-31T12:52:01Z",
+  "fetch_date": "2026-10-31T12:56:47Z",
   "seed": 42,
   "checksum": "sha256 over file bytes with CRLF normalised to LF",
   "files": {
     "vuln_snapshot.jsonl": {
-      "sha256": "492aee1048c9d2cbeae5828ad1acfe03148d2286f33d04a8aa4c94c29872c1a5",
+      "sha256": "296050f93220a42a309933b61c89e47969f0f6c04ea895c556824c0089fc154f",
       "rows": 812,
-      "bytes": 1870423
+      "bytes": 1874559
     },
     "kev.jsonl": {
       "sha256": "b830bdbaa75488f99b615725f4648cc83cf47bedd2335ab15db6a1e96e812b5a",
@@ -53,7 +53,7 @@
       "batches": 9,
       "cves_requested": 811,
       "cves_returned": 801,
-      "fetched_at": "2026-10-31T12:52:01Z"
+      "fetched_at": "2026-10-31T12:56:47Z"
     }
   },
   "selection": {
