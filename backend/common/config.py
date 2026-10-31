@@ -44,9 +44,9 @@ class Settings(BaseSettings):
     
     # Risk Band Thresholds: 50th / 80th / 95th percentile of M1 risk on held-out generator A, by the rule fixed in
     # docs/ML_DECISIONS.md section 3 before computing them (evaluation/band_thresholds.py; was 25 / 50 / 75)
-    risk_band_low_max: float = Field(default=8.91, alias="RISK_BAND_LOW_MAX")
-    risk_band_medium_max: float = Field(default=15.03, alias="RISK_BAND_MEDIUM_MAX")
-    risk_band_high_max: float = Field(default=38.74, alias="RISK_BAND_HIGH_MAX")
+    risk_band_low_max: float = Field(default=7.8, alias="RISK_BAND_LOW_MAX")
+    risk_band_medium_max: float = Field(default=14.62, alias="RISK_BAND_MEDIUM_MAX")
+    risk_band_high_max: float = Field(default=44.84, alias="RISK_BAND_HIGH_MAX")
     
     # Cascade Alert Threshold
     cascade_alert_threshold: float = Field(default=0.5, alias="CASCADE_ALERT_THRESHOLD")

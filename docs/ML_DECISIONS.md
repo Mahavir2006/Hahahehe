@@ -68,3 +68,29 @@ must be re-derived whenever M1 is retrained):
 |---|---|---|
 | SHAP values did not add up | On 300 held-out rows, 285 explanations missed the model's log-odds by more than 0.01, up to 0.74; the error tracked asset type. shap's TreeExplainer does not reproduce HistGradientBoosting's native categorical splits. The "SHAP supported" check only tested that SHAP ran. | Asset type is passed as an ordinal code (no native categorical feature). "SHAP supported" now means additivity error below 1e-3 on 200 rows. A batch additivity test was added. |
 | `num_dependents` meant different things in training and live scoring | Training uses direct dependents (median 2); demo assets passed transitive dependents (median 16, clipped at 20); PSI 3.57 | The model feature uses direct dependents (`AssetCtx.direct_dependents`); the impact formula keeps the transitive count. |
+
+## 5. Decision change: operating threshold rule F2 -> F1
+
+Requested by the team after the rigorous evaluation. Under F2 the alert threshold was 0.12: 76% of compromises
+caught at precision 0.25, about three false alarms per real one, accuracy 0.557. That is alert fatigue for
+operators. The rule is now "maximise F1 on the validation split", applied identically to M1 and the baselines
+(B1, B3). Ranking, band thresholds and attested bands do not use this threshold; it only sets the binary
+"alert" label. The trade-off (fewer false alarms, more missed compromises) is reported in the threshold sweep.
+
+## 6. Data change: known-exploited CVEs from KEV + NVD (declared before rebuilding)
+
+Only 9 CVEs of the CISA OT advisory snapshot are in KEV, so the model saw just 54 known-exploited rows. KEV itself
+has almost no OT-vendor entries (about 10 for Siemens, ABB, Hitachi, Rockwell, Schneider, Delta and Unitronics),
+but hundreds for the IT and perimeter products these organisations also run. KEV-listed CVEs, with CVSS and
+publication dates from NVD (`data/real_extra/`), now join the CVE pool by vendor and product:
+
+| Asset types | KEV vendors / products |
+|---|---|
+| firewall | Fortinet, Palo Alto, SonicWall, Juniper SRX, Check Point, Zyxel, Sophos, WatchGuard, Cisco ASA / Firepower |
+| jump host | Ivanti, Pulse Secure, Citrix, Microsoft Remote Desktop, VMware Horizon |
+| hospital network switch | Cisco IOS, Juniper Junos |
+| EHR / PACS / SCADA servers, historians, HMIs | Microsoft Windows / Exchange / SQL, VMware vCenter / ESXi |
+| OT device types | OT vendors in KEV, matched by the existing product keywords |
+
+The label process, search grid, model-choice rule, F1 threshold rule (section 5) and band-threshold rule
+(section 3) are unchanged; the datasets, M1 and the thresholds are rebuilt with them.

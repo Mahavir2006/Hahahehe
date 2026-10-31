@@ -4,7 +4,7 @@ Train M1 (compromise-likelihood classifier) on generator A.
     python -m backend.risk.train_model          # from the repo root (make train-model)
 
 Bounded search (16 configs, GroupKFold on training groups only), the model-choice rule from
-docs/ML_DECISIONS.md, sigmoid calibration on a separate calibration split, an F2 operating threshold from the
+docs/ML_DECISIONS.md, sigmoid calibration on a separate calibration split, an F1 operating threshold from the
 validation split. Writes backend/risk/artifacts/{model.joblib, metadata.json}. Never imports data/label_process.py.
 """
 
@@ -122,9 +122,9 @@ def calibrate(base, calib: pd.DataFrame):
     return cal, method, pos
 
 
-def f2_threshold(y: np.ndarray, p: np.ndarray) -> float:
+def f1_threshold(y: np.ndarray, p: np.ndarray) -> float:
     grid = np.round(np.arange(0.02, 0.96, 0.01), 2)
-    scores = [fbeta_score(y, (p >= t).astype(int), beta=2, zero_division=0) for t in grid]
+    scores = [fbeta_score(y, (p >= t).astype(int), beta=1, zero_division=0) for t in grid]
     return float(grid[int(np.argmax(scores))])
 
 
@@ -146,7 +146,7 @@ def train(out_dir: Optional[Path] = None, seed: int = SEED, cfg: Optional[Dict[s
         cfg, search_log = search(s["train"])
     base = fit(cfg, s["train"][FEATURES], s["train"]["label"], seed)
     cal, method, cal_pos = calibrate(base, s["calib"])
-    thr = f2_threshold(s["valid"]["label"].values, cal.predict_proba(s["valid"][FEATURES])[:, 1])
+    thr = f1_threshold(s["valid"]["label"].values, cal.predict_proba(s["valid"][FEATURES])[:, 1])
     data_hash = file_hash(DATA / "gen_a.csv")
     version = model_version(cfg, data_hash, seed)
     bundle = {"base": base, "calibrated": cal, "features": FEATURES, "threshold": thr, "model_version": version}
@@ -154,7 +154,7 @@ def train(out_dir: Optional[Path] = None, seed: int = SEED, cfg: Optional[Dict[s
     meta = {
         "model_version": version, "artifact_sha256": hashlib.sha256((out_dir / "model.joblib").read_bytes()).hexdigest(),
         "features": FEATURES, "config": cfg, "calibration": {"method": method, "positives_in_calibration_split": cal_pos},
-        "operating_threshold": {"value": thr, "rule": "maximise F2 on the validation split"},
+        "operating_threshold": {"value": thr, "rule": "maximise F1 on the validation split (was F2; docs/ML_DECISIONS.md section 5)"},
         "training_data": {"file": "data/ml/gen_a.csv", "sha256": data_hash, "rows_train": int(len(s["train"])),
                           "positive_rate_train": round(float(s["train"]["label"].mean()), 4)},
         "seed": seed, "sklearn": sklearn.__version__, "epss_source": "proxy",
