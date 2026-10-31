@@ -129,6 +129,27 @@ def test_live_features_follow_what_if_patch():
 
 
 @pytest.mark.req("PS03-WP1-05")
+def test_what_if_copy_sees_refreshed_extras():
+    a = ctx(vulns=[VULN])  # v1 features_of needs a numeric CVSS; seeded real CVEs always carry one
+    A.attach_live_features(a, {"open_ports": [22]})
+    w = M.what_if([a], [{"action": "PATCH", "targets": ["x"]}])
+    assert w["risk_after"] < w["risk_before"] and a.extra["has_vulnerability"] == 1.0
+
+
+@pytest.mark.req("PS03-WP1-05")
+def test_extras_survive_state_persistence():
+    import dataclasses
+    import json as _json
+
+    a = ctx(vulns=[VULN])
+    A.attach_live_features(a, {"open_ports": [22]})
+    d = _json.loads(_json.dumps(dataclasses.asdict(a), default=str))
+    b = M.AssetCtx(**d)
+    assert b.extra == a.extra and isinstance(b.extra, dict)
+    assert M.score_asset(b, explain=False)["risk"] == M.score_asset(a, explain=False)["risk"]
+
+
+@pytest.mark.req("PS03-WP1-05")
 def test_out_of_range_inputs_are_clipped_and_reported():
     a = ctx(vulns=[VULN], criticality=9)
     s = E.score_asset_v2(a)

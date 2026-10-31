@@ -1,0 +1,12 @@
+{
+  "note": "SIMULATION. Protected assets are never auto-isolated; allowed paths must survive any containment action.",
+  "protected_assets": {
+    "hospital-asset-005": "Infusion pump controller: life-critical, safety-critical",
+    "power-asset-007": "Safety PLC: safety instrumented function"
+  },
+  "allowed_paths": [
+    {"from": "hospital-asset-002", "to": "hospital-asset-005", "why": "medical device gateway must keep reaching the infusion pump controller"},
+    {"from": "power-asset-012", "to": "power-asset-007", "why": "substation gateway 12 must keep reaching the safety PLC"}
+  ],
+  "isolation_ok_with_dependents": []
+}

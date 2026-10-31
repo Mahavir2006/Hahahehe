@@ -53,13 +53,15 @@ def shap_factors(m: "risk.RiskModel", feats: Dict[str, float], top: int = TOP_N)
 
 def source_tags(a: "risk.AssetCtx") -> List[str]:
     tags = sorted({str(v.get("source", "advisory")) for v in a.vulns})
-    if isinstance(a.extra, adapter.LiveFeatures) and a.extra.static.get("rule_hit_count", 0) > 0:
+    if a.extra.get("rule_hit_count", 0) > 0:
         tags.append("telemetry")
     return tags or ["inventory"]
 
 
 def score_asset_v2(a: "risk.AssetCtx", m: Optional["risk.RiskModel"] = None, explain: bool = True) -> Dict[str, Any]:
     m = m or risk.RiskModel.get()
+    if a.extra:
+        adapter.refresh(a)
     legacy = risk.score_asset(a, m, explain=explain)
     feats = risk.features_of(a)
     issues = adapter.check_inputs(feats, m.features)

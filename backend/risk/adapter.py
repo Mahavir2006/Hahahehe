@@ -6,8 +6,8 @@ RISK_MODEL_DIR=<dir>  -> a v2 folder (CONTEXT.md section 6): metadata.json must 
                          model.joblib and a feature list drawn only from REGISTRY. A mismatch raises
                          ModelArtifactError; there is no silent fallback to v1.
 
-Registry features beyond v1's ten are computed live from the asset (LiveFeatures), so what-if copies of an
-asset (patched, isolated, ...) always present current values to a v2 model. v1 never reads them.
+Registry features beyond v1's ten live in AssetCtx.extra (a plain dict); vulnerability-derived ones are refreshed
+before PS-03 scoring and after every apply_action, so what-if copies present current values. v1 never reads them.
 """
 
 from __future__ import annotations
@@ -16,9 +16,8 @@ import hashlib
 import json
 import math
 import os
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, List, Optional
 
 from backend.risk import model as risk
 
@@ -128,56 +127,52 @@ def info() -> Dict[str, Any]:
     return out
 
 
-# ------------------------------------------------------------------ live registry features
-class LiveFeatures(Mapping):
-    """AssetCtx.extra for the PS-03 path: vulnerability features are recomputed from asset.vulns on every read;
-    `static` holds inventory-derived and telemetry aggregates set by the seeder / reassessor."""
-
-    def __init__(self, asset: "risk.AssetCtx", static: Optional[Dict[str, float]] = None):
-        self.asset = asset
-        self.static: Dict[str, float] = dict(static or {})
-
-    def _vuln(self) -> Dict[str, float]:
-        vs = self.asset.vulns
-        cvss = [float(v["cvss"]) for v in vs if v.get("cvss") is not None]
-        epss = [float(v["epss"]) for v in vs if v.get("epss") is not None]
-        return {
-            "has_vulnerability": float(bool(vs)), "cve_count": float(len(vs)),
-            "max_cvss": max(cvss, default=0.0), "max_epss": max(epss, default=0.0),
-            "any_known_exploited": float(any(v.get("exploited") for v in vs)),
-            "missing_epss": float(any(v.get("epss_missing") for v in vs)),
-        }
-
-    def _all(self) -> Dict[str, float]:
-        return {**self.static, **self._vuln()}
-
-    def __getitem__(self, k: str) -> float:
-        return self._all()[k]
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self._all())
-
-    def __len__(self) -> int:
-        return len(self._all())
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, Mapping) and dict(self) == dict(other)
-
-    def set_static(self, **kw: float) -> None:
-        self.static.update(kw)
+# ------------------------------------------------------------------ registry features on AssetCtx.extra
+# extra stays a plain dict (the orchestrator persists assets with asdict + json). Vulnerability-derived features
+# are recomputed before every PS-03 scoring and after every apply_action (hook below), so what-if copies of an
+# asset (patched, isolated, ...) present current values to a model that reads them. v1 never reads them.
+def vuln_features(asset: "risk.AssetCtx") -> Dict[str, float]:
+    vs = asset.vulns
+    cvss = [float(v["cvss"]) for v in vs if v.get("cvss") is not None]
+    epss = [float(v["epss"]) for v in vs if v.get("epss") is not None]
+    return {
+        "has_vulnerability": float(bool(vs)), "cve_count": float(len(vs)),
+        "max_cvss": max(cvss, default=0.0), "max_epss": max(epss, default=0.0),
+        "any_known_exploited": float(any(v.get("exploited") for v in vs)),
+        "missing_epss": float(any(v.get("epss_missing") for v in vs)),
+    }
 
 
-def attach_live_features(asset: "risk.AssetCtx", inventory_row: Optional[Dict[str, Any]] = None) -> LiveFeatures:
-    static: Dict[str, float] = {f: 0.0 for f in TELEMETRY_FEATURES}
+def refresh(asset: "risk.AssetCtx") -> Dict[str, float]:
+    asset.extra.update(vuln_features(asset))
+    return asset.extra
+
+
+_original_apply_action = risk.apply_action
+
+
+def _apply_action_and_refresh(a: "risk.AssetCtx", action: str) -> None:
+    _original_apply_action(a, action)
+    if a.extra:
+        refresh(a)
+
+
+def install_refresh_hook() -> None:
+    """What-if, planner and executor all call risk.apply_action; keep registry features current after each action."""
+    if risk.apply_action is not _apply_action_and_refresh:
+        risk.apply_action = _apply_action_and_refresh
+
+
+def attach_live_features(asset: "risk.AssetCtx", inventory_row: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
+    install_refresh_hook()
+    if not isinstance(asset.extra, dict):
+        asset.extra = {}
+    for f in TELEMETRY_FEATURES:
+        asset.extra.setdefault(f, 0.0)
     if inventory_row is not None:
-        static["open_mgmt_ports"] = float(sum(1 for p in inventory_row.get("open_ports", []) if p in MGMT_PORTS))
-        static["firmware_known"] = float(str(inventory_row.get("firmware_state", "")).lower() in ("attested", "match"))
-    if isinstance(asset.extra, LiveFeatures):
-        asset.extra.set_static(**{k: v for k, v in static.items() if k not in asset.extra.static})
-        return asset.extra
-    lf = LiveFeatures(asset, static)
-    asset.extra = lf  # type: ignore[assignment]
-    return lf
+        asset.extra.setdefault("open_mgmt_ports", float(sum(1 for p in inventory_row.get("open_ports", []) if p in MGMT_PORTS)))
+        asset.extra.setdefault("firmware_known", float(str(inventory_row.get("firmware_state", "")).lower() in ("attested", "match")))
+    return refresh(asset)
 
 
 def check_inputs(row: Dict[str, float], features: List[str]) -> List[Dict[str, Any]]:

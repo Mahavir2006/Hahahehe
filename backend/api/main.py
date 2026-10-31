@@ -339,6 +339,7 @@ def create_app(system: Optional[CascadeShieldSystem] = None) -> FastAPI:
     def metrics():
         return S().metrics()
 
+    from backend.api.ps03 import register; register(app, S, role, need_org, need_admin)  # noqa: E702  PS-03 (no-op unless PS03_ENABLE=1)
     return app
 
 

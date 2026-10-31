@@ -81,7 +81,7 @@ class Reassessor:
         m = risk.RiskModel.get()
         assets = {}
         for aid, a in n.assets.items():
-            adapter.attach_live_features(a, n.inventory[aid]).set_static(**det.aggregate(aid, day))
+            adapter.attach_live_features(a, n.inventory[aid]).update(det.aggregate(aid, day))
             s = X.score_asset_v2(a, m)
             assets[aid] = {"likelihood_bp": s["likelihood_bp"], "impact_bp": s["impact_bp"], "risk_bp": s["risk_bp"], "band": s["band_bp"],
                            "features": s["features"], "shap": s["factors_shap"]["all"], "likelihood_mult": a.likelihood_mult,
