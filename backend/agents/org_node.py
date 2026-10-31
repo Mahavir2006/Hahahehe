@@ -176,12 +176,24 @@ class OrgNodeRuntime:
             for a in s["required_assets"]:
                 if order.index(s["criticality"]) >= order.index(svc_crit.get(a, "low")):
                     svc_crit[a] = s["criticality"]
+        from data.ml_population import MGMT_PORTS
+        from data.telemetry import demo_telemetry
+        from backend.risk import rules
+
         out = {}
         for aid, a in self.inventory.items():
+            ports = set(a.get("open_ports", []))
+            remote = a.get("type") == "jump host" or bool(ports & {22, 3389, 5900})
+            # benign-only simulated telemetry through the same detection rules D used for training
+            daily = demo_telemetry(aid, remote, a["zone"] in ("OT", "SAFETY"))
+            tel = rules.aggregate(daily, rules.run(daily)).iloc[0]
             out[aid] = risk.AssetCtx(
                 asset_id=aid, org=self.org, name=a["name"], internet_exposed=a["internet_exposed"], default_credentials=a["default_credentials"],
                 zone=a["zone"], last_patched=a["last_patched"], criticality=a["criticality"], safety_critical=a["safety_critical"],
                 num_dependents=len(self.graph.transitive_dependents(aid)), service_crit=svc_crit.get(aid, "low"),
+                asset_type=a.get("type", "unknown"), open_mgmt_ports=len(ports & MGMT_PORTS), remote_access_enabled=remote,
+                firmware_known=a.get("firmware_state") != "unknown",
+                telemetry={k: int(tel[k]) for k in rules.TELEMETRY_FEATURES},
             )
         return out
 

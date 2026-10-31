@@ -59,8 +59,10 @@ class RiskAgent(BaseAgent):
             a = self.node.assets[m["asset_id"]]
             cve = (f.get("cve_ids") or ["UNKNOWN"])[0]
             if not any(v["cve"] == cve for v in a.vulns):
+                # no silent defaults: a missing CVSS/EPSS stays None and becomes the documented fallback + missing_* flag
                 a.vulns.append(
-                    {"cve": cve, "cvss": f.get("cvss_base") if f.get("cvss_base") is not None else 5.0, "epss": max(f.get("epss_like", 0.1), 0.9 if f.get("exploited_in_wild") else 0.0), "exploited": bool(f.get("exploited_in_wild"))}
+                    {"cve": cve, "cvss": f.get("cvss_base"), "epss": f.get("epss_like"), "exploited": bool(f.get("exploited_in_wild")),
+                     "version_match": m.get("match_reason", "advisory matched to inventory")}
                 )
             touched.append(m["asset_id"])
         return ApplyOut(assets=touched)
@@ -85,12 +87,13 @@ class RiskAgent(BaseAgent):
         last = getattr(self.node, "last_attested", {})
         done = []
         for sid, b in bands.items():
-            if not i.force and last.get(sid) == b["band"]:
+            band = risk.band_with_hysteresis(b["risk"], last.get(sid))  # a tiny score change cannot flip the on-chain band
+            if not i.force and last.get(sid) == band:
                 continue
-            r = self.node.attest_risk(sid, b["band"], b["criticality"], {"service": sid, "risk": b["risk"], "model": risk.RiskModel.get().version})
+            r = self.node.attest_risk(sid, band, b["criticality"], {"service": sid, "risk": b["risk"], "model": risk.RiskModel.get().version})
             if r.status in ("confirmed", "duplicate"):
-                last[sid] = b["band"]
-            done.append({"service": sid, "band": b["band"], "status": r.status, "tx": r.tx_hash})
+                last[sid] = band
+            done.append({"service": sid, "band": band, "status": r.status, "tx": r.tx_hash})
         self.node.last_attested = last
         return AttestRiskOut(attested=done)
 
