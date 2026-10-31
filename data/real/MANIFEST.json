@@ -1,0 +1,79 @@
+{
+  "generated_by": "scripts/build_real_snapshot.py",
+  "fetch_date": "2026-10-31T12:52:01Z",
+  "seed": 42,
+  "checksum": "sha256 over file bytes with CRLF normalised to LF",
+  "files": {
+    "vuln_snapshot.jsonl": {
+      "sha256": "492aee1048c9d2cbeae5828ad1acfe03148d2286f33d04a8aa4c94c29872c1a5",
+      "rows": 812,
+      "bytes": 1870423
+    },
+    "kev.jsonl": {
+      "sha256": "b830bdbaa75488f99b615725f4648cc83cf47bedd2335ab15db6a1e96e812b5a",
+      "rows": 1766,
+      "bytes": 272003
+    },
+    "epss.jsonl": {
+      "sha256": "71891c39e2a8a8bbb1d1a52bd43713b44aa77f85d0590e284a92663dfe8125ac",
+      "rows": 801,
+      "bytes": 96576
+    }
+  },
+  "sources": {
+    "csaf": {
+      "url": "https://github.com/cisagov/CSAF",
+      "commit": "3c2594d3dfa2ae5e36146f934b5e231ffbdb3d06",
+      "commit_date": "2026-10-29T14:31:19-06:00",
+      "paths": [
+        "csaf_files/OT/white/2022/*.json",
+        "csaf_files/OT/white/2023/*.json",
+        "csaf_files/OT/white/2024/*.json",
+        "csaf_files/OT/white/2025/*.json",
+        "csaf_files/OT/white/2026/*.json"
+      ],
+      "advisories_read": 2153,
+      "sidecar_sha512_mismatch": [],
+      "sidecar_sha512_missing": 0
+    },
+    "kev": {
+      "url": "https://github.com/cisagov/kev-data",
+      "commit": "7ccba8e1223ccec82d12c7736bf3fae11e5bee86",
+      "commit_date": "2026-10-30T20:27:53Z",
+      "catalogVersion": "2026.10.30",
+      "dateReleased": "2026-10-30T17:02:45.3665Z",
+      "count": 1766
+    },
+    "epss": {
+      "fetched": true,
+      "url": "https://api.first.org/data/v1/epss",
+      "asof_dates": [
+        "2026-10-30"
+      ],
+      "batches": 9,
+      "cves_requested": 811,
+      "cves_returned": 801,
+      "fetched_at": "2026-10-31T12:52:01Z"
+    }
+  },
+  "selection": {
+    "per_sector_target": 100,
+    "eligible_per_sector": {
+      "Energy": 648,
+      "Water and Wastewater": 19,
+      "Healthcare and Public Health": 104
+    },
+    "picked_per_sector": {
+      "Energy": 100,
+      "Water and Wastewater": 100,
+      "Healthcare and Public Health": 100
+    },
+    "fills": {
+      "Water and Wastewater": {
+        "Energy": 77,
+        "Healthcare and Public Health": 4
+      }
+    },
+    "max_cves_per_advisory": 50
+  }
+}
