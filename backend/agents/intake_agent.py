@@ -135,6 +135,11 @@ class IntakeAgent(BaseAgent):
 
         self.node.findings[finding["advisory_id"]] = finding
         if cves or injection:
-            att = self.call("attest_finding", content_hash=content_hash, cve_ids=cves or ["none"], matched=bool(matches))
+            try:
+                att = self.call("attest_finding", content_hash=content_hash, cve_ids=cves or ["none"], matched=bool(matches))
+            except Exception:
+                # not recorded until attested: a paused/failed run must be able to resume this advisory, not see a duplicate
+                self.node.findings.pop(finding["advisory_id"], None)
+                raise
             finding["attestation"] = att.model_dump()
         return finding
