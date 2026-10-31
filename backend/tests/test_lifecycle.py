@@ -12,6 +12,7 @@ from backend.agents import advisory_parser as P
 from backend.agents.framework import GateViolation, IsolationError, ToolNotAllowed, Trace
 from backend.agents.org_node import OrgNodeRuntime
 from backend.agents.orchestrator import Orchestrator
+from backend.common import sealed
 from backend.common.audit import entry_hash
 from backend.common.chain import ChainPaused, ChainRevert, ORGS, org_id
 from pathlib import Path
@@ -94,14 +95,22 @@ def test_05_headline_advisory_runs_the_whole_pipeline(system):
     S["res"] = res
     assert res["power"]["status"] == "awaiting_approval" and res["power"].get("request_id")
     assert res["water"]["status"] == "no_match" and res["hospital"]["status"] == "no_match"
-    # AG-INT-08: every org attests it processed the advisory (matched flag only), nobody reveals which asset
+    # AG-INT-08 / SEC-PRIV-02: every org attests it processed the advisory; neither the outcome nor the
+    # advisory itself is readable on-chain, but each org can open its own commitment to an auditor
     after = events(system, "AttestationRegistry", "FindingAttestationSubmitted")
     assert len(after) == S["finding_events_before"] + 3
-    ch = bytes.fromhex(P.content_hash(text))
+    assert all("matched" not in e["args"] and "advisoryContentHash" not in e["args"] for e in after)
+    h = P.content_hash(text)
+    ch = bytes.fromhex(h)
     for org in ORGS:
-        f = system.chain.call("AttestationRegistry", "getFindingAttestation", org_id(org), ch)
+        node = system.nodes[org]
+        none = system.chain.call("AttestationRegistry", "getFindingAttestation", org_id(org), ch)
+        assert none[-1] == 0, "the public advisory hash must not find the attestation"
+        f = system.chain.call("AttestationRegistry", "getFindingAttestation", org_id(org), node.blind(ch))
         assert f[0] == org_id(org) and f[2] != b"\x00" * 32
-        assert bool(f[4]) == (org == "power")
+        o = node.finding_openings[h]
+        assert system.chain.call("AttestationRegistry", "verifyFindingDisclosure", org_id(org), bytes.fromhex(o["advisory_key"][2:]),
+                                 bytes.fromhex(o["salt"][2:]), ch, bytes.fromhex(o["cve_set_hash"][2:]), org == "power")
     S["rid"] = res["power"]["request_id"]
 
 
@@ -116,7 +125,14 @@ def test_06_cascade_reaches_water_then_hospital_and_alerts_on_chain(system):
     assert cs["alerts"] and cs["alerts"][0]["status"] == "confirmed"
     aid = cs["alerts"][0]["alert_id"]
     al = system.chain.call("AlertBus", "getAlert", bytes.fromhex(aid[2:]))
-    assert al[0] == org_id("power") and al[8] == 1  # providerOrg, Status.Active
+    assert al[0] == org_id("power") and al[7] == 1  # providerOrg, Status.Active
+    # SEC-PRIV-03: severity/TTI are sealed to the alert's direct consumers; outsiders cannot open it
+    ev = next(e["args"] for e in events(system, "AlertBus", "CascadeAlert") if e["args"]["alertId"] == aid)
+    assert "severity" not in ev and "tti" not in ev
+    opened = system.nodes["water"].open_disclosure(ev["sealedPayload"])
+    assert opened and opened["severity"] == 3 - ["critical", "high", "medium", "low"].index(cs["alerts"][0]["severity"])
+    outsider = sealed.private_key_from_secret(b"\x42" * 32)
+    assert sealed.open_sealed(sealed.from_hex(ev["sealedPayload"]), outsider) is None
     # relevant to water via a CONFIRMED edge, invisible to a service without one
     wsvc = "water-service-1"
     assert bytes.fromhex(aid[2:]) in system.chain.call("AlertBus", "affectedBy", org_id("water"), system.nodes["water"].svc_hash(wsvc))
@@ -263,8 +279,32 @@ def test_15_downstream_orgs_acknowledge_and_harden_within_seconds(system):
 def test_16_risk_band_changes_are_published_on_chain(system):
     water = system.nodes["water"]
     sid = next(iter(water.upstream))
-    att = system.chain.call("AttestationRegistry", "getLatestRiskAttestation", org_id("water"), water.svc_hash(sid))
-    assert int(att[2]) >= 2, "band raised after the upstream alert"
+    aid = "0x" + bytes(system.chain.call("AttestationRegistry", "latestRiskId", org_id("water"), water.svc_hash(sid))).hex()
+    ev = next(e["args"] for e in events(system, "AttestationRegistry", "RiskAttestationSubmitted") if e["args"]["attestationId"] == aid)
+    assert "riskBand" not in ev, "the band is never public"
+    d = system.nodes["power"].open_disclosure(ev["sealedBand"])  # any consortium member can open it ...
+    assert system.chain.call("AttestationRegistry", "verifyBandDisclosure", bytes.fromhex(aid[2:]), bytes.fromhex(d["salt"]), d["band"], d["crit"])
+    assert d["band"] >= 2, "band raised after the upstream alert"
+
+
+@pytest.mark.req("SEC-PRIV-01", "SEC-PRIV-02", "SEC-PRIV-03", "SEC-PRIV-05")
+def test_16b_nothing_sensitive_is_readable_on_chain(system):
+    """Everything an attacker could read from any node: no plaintext bands, terms, outcomes or severities, and no
+    sealed blob opens without a member key. Every member can open what is addressed to the consortium."""
+    system.indexer.sync()
+    leaky = {"riskBand", "criticalityBucket", "strength", "tolerance", "matched", "cveSetHash", "advisoryContentHash", "severity", "tti"}
+    blobs = []
+    for e in system.indexer.query(limit=100000):
+        assert not leaky & set(e["args"]), (e["name"], leaky & set(e["args"]))
+        for k in ("sealedTerms", "sealedBand", "sealedPayload"):
+            if k in e["args"]:
+                blobs.append((e["name"], sealed.from_hex(e["args"][k])))
+    assert blobs and all(len(b) == sealed.SIZE for _, b in blobs), "fixed-size envelopes: length reveals nothing"
+    outsider = sealed.private_key_from_secret(b"\x42" * 32)
+    assert all(sealed.open_sealed(b, outsider) is None for _, b in blobs)
+    for name, b in blobs:
+        if name != "CascadeAlert":  # dependency terms and bands are addressed to every member
+            assert all(n.open_disclosure(b) for n in system.nodes.values())
 
 
 @pytest.mark.req("BC-ATT-R-04")

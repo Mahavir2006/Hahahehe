@@ -305,22 +305,22 @@ Purpose: produce an executable, constraint-respecting remediation plan and quant
 Three attestation kinds, all signed with **EIP-712 typed data** by the org's agent signer, submitted on-chain (the submitter may be a relayer; the signature identifies the org).
 
 **(a) Dependency attestations — `BC-ATT-D`**
-- **BC-ATT-D-01** A cross-org dependency edge is declared by **both** sides: the **consumer** attests `(consumerOrg, consumerServiceHash, providerOrg, providerServiceHash, strengthBucket, toleranceBucket, nonce, expiry)` and the **provider** attests the matching tuple. An edge is `Confirmed` only when both attestations exist, match, and are unexpired.
+- **BC-ATT-D-01** A cross-org dependency edge is declared by **both** sides: the **consumer** attests `(consumerOrg, consumerServiceHash, providerOrg, providerServiceHash, strengthBucket, toleranceBucket, nonce, expiry)` and the **provider** attests the matching tuple. An edge is `Confirmed` only when both attestations exist, match, and are unexpired. *(Amended by SEC-PRIV: the buckets are carried as `termsCommitment = keccak256(abi.encode(salt, strength, tolerance))` with the salt agreed in the handshake, so "match" means identical commitments.)*
 - **BC-ATT-D-02** Service identifiers are `keccak256(orgId, serviceName, secretSalt)` — salts stay off-chain at each org; the *other* side learns the hash only via an off-chain handshake (agent-to-agent message) and verifies by recomputing from the shared edge descriptor. Implement the handshake in `OrgNodeRuntime` and test it.
-- **BC-ATT-D-03** Buckets (`low|medium|high`, tolerance `<15m|15–60m|1–4h|>4h`) are enums; precise values never go on-chain.
+- **BC-ATT-D-03** Buckets (`low|medium|high`, tolerance `<15m|15–60m|1–4h|>4h`) are enums; precise values never go on-chain. *(Amended by SEC-PRIV: not even the buckets are on-chain in the clear; recipients validate the opened enum range.)*
 - **BC-ATT-D-04** Edge states: `Proposed → Confirmed → Revoked | Expired`. Either party can revoke its side (edge becomes `Revoked`). Expiry enforced by timestamp; `isConfirmed(edgeId)` is a view that accounts for expiry.
 - **BC-ATT-D-05** Mismatched tuples (e.g., different strength bucket) leave the edge `Disputed` and emit `EdgeDisputed`; dispute resolution = re-attest. Test.
 - **BC-ATT-D-06** Replay protection via per-signer nonces; EIP-712 domain separator includes chain id and contract address (test cross-chain/cross-contract replay is rejected).
 
 **(b) Risk attestations — `BC-ATT-R`**
-- **BC-ATT-R-01** Org agent attests `(orgId, serviceHash, riskBand, criticalityBucket, modelVersionHash, evidenceCommitment, validUntil, nonce)`. `evidenceCommitment = keccak256(abi.encode(salt, riskAssessmentHash))` allowing later selective disclosure to an auditor by revealing salt + assessment (BC-ATT-R-04).
+- **BC-ATT-R-01** Org agent attests `(orgId, serviceHash, riskBand, criticalityBucket, modelVersionHash, evidenceCommitment, validUntil, nonce)`. `evidenceCommitment = keccak256(abi.encode(salt, riskAssessmentHash))` allowing later selective disclosure to an auditor by revealing salt + assessment (BC-ATT-R-04). *(Amended by SEC-PRIV-01: `riskBand`/`criticalityBucket` are replaced by `bandCommitment`; the salt MUST be random.)*
 - **BC-ATT-R-02** Latest attestation per `(orgId, serviceHash)` is queryable (`latestRisk`) plus full history via events.
 - **BC-ATT-R-03** Rate-limit: min interval between risk attestations per service (config, default 1 block in tests, 60 s in prod config) to prevent spam; tested.
 - **BC-ATT-R-04** `verifyDisclosure(orgId, serviceHash, attestationId, salt, assessmentHash) -> bool` recomputes the commitment on-chain; test selective disclosure success and failure.
 - **BC-ATT-R-05** A risk attestation expires; consumers treat expired as `unknown` (cascade engine MUST treat unknown as medium-conservative per documented rule; test).
 
 **(c) Finding attestations — `BC-ATT-F`**
-- **BC-ATT-F-01** Org agent attests `(orgId, advisoryContentHash, cveSetHash, processedAt, matched(bool))` — proves the org saw/processed the advisory by time T without revealing which assets matched.
+- **BC-ATT-F-01** Org agent attests `(orgId, advisoryContentHash, cveSetHash, processedAt, matched(bool))` — proves the org saw/processed the advisory by time T without revealing which assets matched. *(Amended by SEC-PRIV-02: `advisoryContentHash`, `cveSetHash` and `matched` are public-hashable, so they are replaced by a blinded `advisoryKey` and a `findingCommitment`.)*
 - **BC-ATT-F-02** Duplicate `(orgId, advisoryContentHash)` is idempotent (no double-write, returns existing id).
 
 **Cross-cutting for all attestations**
@@ -366,10 +366,10 @@ Three attestation kinds, all signed with **EIP-712 typed data** by the org's age
 - **BC-FW-07** Batch verify (`verifyMany`) for gas efficiency with a size cap.
 
 ### 6.7 Contract 6 — `AlertBus`  (cross-org early warning)
-- **BC-ALERT-01** `publish(orgId, serviceHash, severity, ttiBucket, evidenceCommitment, expiry)` callable by org agent signer. Emits `CascadeAlert` indexed by `orgId` and `serviceHash`.
+- **BC-ALERT-01** `publish(orgId, serviceHash, severity, ttiBucket, evidenceCommitment, expiry)` callable by org agent signer *(amended by SEC-PRIV-03: `publish(orgId, serviceHash, alertCommitment, dedupeKey, expiry, sealedPayload)`)*. Emits `CascadeAlert` indexed by `orgId` and `serviceHash`.
 - **BC-ALERT-02** **Subscription model:** consumer orgs' agents watch events; the contract additionally exposes `affectedBy(consumerOrg, consumerServiceHash)` which returns the set of currently-active alerts from providers with a **confirmed** dependency edge to that consumer service (so a consumer only receives alerts relevant via confirmed edges; unrelated orgs cannot spam arbitrary targets — alert for a non-confirmed edge is stored but flagged `Unrelated` and excluded from `affectedBy`).
 - **BC-ALERT-03** Acknowledge: consumer agent signer calls `acknowledge(alertId)`; ack events anchor response time. The dashboard computes mean-time-to-ack.
-- **BC-ALERT-04** Severity enum, TTL, and de-dupe window (same provider/service/severity within window collapses); tested.
+- **BC-ALERT-04** Severity enum, TTL, and de-dupe window (same provider/service/severity within window collapses); tested. *(Amended by SEC-PRIV-03: de-dupe keys on a provider-blinded `dedupeKey` derived from the severity.)*
 - **BC-ALERT-05** Alert resolution: provider `resolve(alertId)` when risk drops; event emitted.
 - **BC-ALERT-06** Anti-abuse: per-org alert rate limit, tested.
 
@@ -392,6 +392,13 @@ Three attestation kinds, all signed with **EIP-712 typed data** by the org's age
 - **BC-SEC-06** Solidity coverage ≥ 95% line and ≥ 90% branch on all six contracts (`hardhat coverage`); the verification script enforces the thresholds.
 - **BC-SEC-07** Threat model document covers: compromised agent signer, compromised single approver, colluding approvers < M, malicious org lying in attestations, replayed signatures, DoS by spam, front-running of approvals, censorship by block producer (documented as out-of-scope for local chain), and LLM prompt injection leading to malicious requests (mitigated by gate + critic). Each threat lists the control and the test that demonstrates it.
 - **BC-SEC-08** "Lying org" mitigation: dependency edges need bilateral confirmation (BC-ATT-D-01); risk attestations can be challenged — a downstream org can post a `challenge(attestationId, evidenceCommitment)` event recorded on-chain and surfaced on the dashboard as `disputed` (no automatic slashing; documented). Implement `challenge` in AttestationRegistry with tests.
+
+**(SEC-PRIV) On-chain confidentiality.** The chain is readable by anyone who reaches a node and it is immutable, so it MUST NOT become a list of what is vulnerable, how badly, and what fails next. Sensitive values go on-chain only as salted commitments; the values travel as sealed envelopes to the members that need them.
+- **SEC-PRIV-01** Risk band and criticality MUST NOT be stored or emitted in the clear: the chain holds `bandCommitment = keccak256(abi.encode(salt, band, crit))` with a random salt, and the values travel sealed to consortium members, who verify them against the commitment (`verifyBandDisclosure`). Dependency strength/tolerance follow the same rule (`termsCommitment`).
+- **SEC-PRIV-02** A finding attestation MUST NOT reveal which advisory/CVEs affected the org or whether it matched: the lookup key is the advisory hash blinded with an org secret and the outcome is a random-salted commitment; the org MAY open it to an auditor (`verifyFindingDisclosure`).
+- **SEC-PRIV-03** Alert severity and time-to-impact MUST NOT be public; they are committed on-chain and sealed to the alert's direct consumers. A consumer that cannot open or verify an alert MUST treat it conservatively (not ignore it).
+- **SEC-PRIV-04** `OrgRegistry` stores one X25519 encryption public key per org, settable only by that org's admin (`setEncryptionKey`).
+- **SEC-PRIV-05** Sealed envelopes MUST be fixed-size with unlabeled recipient slots (length and slot count reveal nothing), and `keccak256(sealed)` MUST be covered by the signed attestation so a relayer cannot swap the ciphertext.
 
 ### 6.10 Blockchain-side tests (Hardhat) — minimum list
 Each contract: positive, negative, access-control, event, boundary, and invariant tests, plus an **integration test** `full_flow.test.ts` that does: register orgs → bilateral dependency attestations → risk attestation → alert → request approval (HIGH) → approvals reach M → execute → audit chain verifies → firmware mismatch detected. Tag tests with requirement IDs in `describe`/`it` titles.

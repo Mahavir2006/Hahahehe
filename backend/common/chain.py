@@ -268,8 +268,8 @@ class Chain:
             {"name": "consumerServiceHash", "type": "bytes32"},
             {"name": "providerOrg", "type": "bytes32"},
             {"name": "providerServiceHash", "type": "bytes32"},
-            {"name": "strength", "type": "uint8"},
-            {"name": "tolerance", "type": "uint8"},
+            {"name": "termsCommitment", "type": "bytes32"},
+            {"name": "disclosureHash", "type": "bytes32"},
             {"name": "nonce", "type": "uint256"},
             {"name": "expiry", "type": "uint256"},
         ]
@@ -278,8 +278,8 @@ class Chain:
         "RiskAttestation": [
             {"name": "orgId", "type": "bytes32"},
             {"name": "serviceHash", "type": "bytes32"},
-            {"name": "riskBand", "type": "uint8"},
-            {"name": "criticalityBucket", "type": "uint8"},
+            {"name": "bandCommitment", "type": "bytes32"},
+            {"name": "disclosureHash", "type": "bytes32"},
             {"name": "modelVersionHash", "type": "bytes32"},
             {"name": "evidenceCommitment", "type": "bytes32"},
             {"name": "validUntil", "type": "uint256"},
@@ -289,10 +289,9 @@ class Chain:
     FINDING_TYPES = {
         "FindingAttestation": [
             {"name": "orgId", "type": "bytes32"},
-            {"name": "advisoryContentHash", "type": "bytes32"},
-            {"name": "cveSetHash", "type": "bytes32"},
+            {"name": "advisoryKey", "type": "bytes32"},
+            {"name": "findingCommitment", "type": "bytes32"},
             {"name": "processedAt", "type": "uint256"},
-            {"name": "matched", "type": "bool"},
             {"name": "nonce", "type": "uint256"},
         ]
     }

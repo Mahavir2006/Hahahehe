@@ -14,4 +14,6 @@
 
 7. **Dashboard on-chain verification is partial.** DASH-10 requires direct ethers.js reads for Audit Verification and Attestations views; other views may read via the backend API.
 
-8. **No real-world remediation.** The ExecutorAgent mutates only simulated state (AG-ACT-01). No actual patches, credential rotations, or network changes are performed.
+8. **On-chain confidentiality has residual metadata.** Values are hidden (SEC-PRIV), but the org-level dependency graph, timing and counts of attestations are visible to chain readers, and every consortium member can decrypt the shared bands/edges. See "What is still visible on-chain" in `docs/THREAT_MODEL.md`. Encryption keys are derived from the dev key files, which is not acceptable outside development.
+
+9. **No real-world remediation.** The ExecutorAgent mutates only simulated state (AG-ACT-01). No actual patches, credential rotations, or network changes are performed.

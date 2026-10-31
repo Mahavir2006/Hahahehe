@@ -2,7 +2,7 @@
 
 ## Overview
 
-CascadeShield is a cross-organisation cascade-risk prediction system for critical infrastructure. Three mutually distrusting organisations (power, water, hospital) each run their own agent node with private data. They coordinate only through a permissioned local EVM blockchain that stores hashes, commitments, attestations, approvals, and alerts — never raw inventories or sensitive asset data.
+CascadeShield is a cross-organisation cascade-risk prediction system for critical infrastructure. Three mutually distrusting organisations (power, water, hospital) each run their own agent node with private data. They coordinate only through a permissioned local EVM blockchain that stores hashes, commitments, attestations, approvals, and alerts — never raw inventories or sensitive asset data. Values that would tell a chain reader *what is vulnerable* (risk bands, dependency terms, alert severity, finding outcomes) are only commitments on-chain; members exchange the values as sealed envelopes encrypted to each other's `OrgRegistry` keys (`backend/common/sealed.py`, SEC-PRIV).
 
 ## Layered Architecture
 
@@ -58,4 +58,5 @@ React + Vite + TypeScript with ethers.js read-only on-chain verification for Aud
 - **No agent can execute without approval** — GateViolation enforced in ExecutorAgent and ApprovalGate contract
 - **No agent can approve its own requests** — ApprovalGate rejects agent signer as voter (BC-GATE-06)
 - **No LLM computes authoritative risk** — all numbers from deterministic model; LLM only writes narratives (AG-RSK-02)
-- **Cross-org cascade uses only public attestations** — engine never reads private inventory (CAS-02)
+- **Cross-org cascade uses only on-chain attestations** — engine never reads private inventory (CAS-02); it opens the sealed bands/terms addressed to its org and checks them against the on-chain commitments
+- **Chain readers learn no vulnerabilities** — commitments + fixed-size sealed envelopes only (SEC-PRIV, THREAT_MODEL T-12)

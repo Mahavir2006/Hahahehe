@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { deploySystem, ORG, KIND, IMPACT, STATUS, submitRisk, submitFinding, confirmEdge, anchorCritic, futureTs, submitDep } from "./helpers";
+import { deploySystem, ORG, KIND, IMPACT, STATUS, submitRisk, submitFinding, confirmEdge, anchorCritic, futureTs, submitDep, publishAlert, bandCommitment } from "./helpers";
 
 describe("Integration: full CascadeShield flow", function () {
   it("BC-ENV-03 INT-01 register -> bilateral edges -> risk -> alert -> HIGH approval -> execute -> audit verifies -> firmware mismatch", async function () {
@@ -30,14 +30,14 @@ describe("Integration: full CascadeShield flow", function () {
     // 2. finding + risk attestation
     await submitFinding(sys.attestation, sys.people.power.agent, ORG.power, ethers.id("ADV-1"), ethers.id("CVE-2024-0001"), await futureTs(0), true);
     await submitRisk(sys.attestation, sys.people.power.agent, ORG.power, P, 3, 3, await futureTs(100000));
-    expect((await sys.attestation.getLatestRiskAttestation(ORG.power, P)).riskBand).to.equal(3);
+    expect((await sys.attestation.getLatestRiskAttestation(ORG.power, P)).bandCommitment).to.equal(bandCommitment(3, 3));
 
     // 3. cascade alert reaches the downstream orgs through confirmed edges
-    await sys.alertBus.connect(sys.people.power.agent).publish(ORG.power, P, 3, 1, ethers.id("evidence"), await futureTs(3600));
+    await publishAlert(sys.alertBus, sys.people.power.agent, ORG.power, P, 3, 1, await futureTs(3600), ethers.id("evidence"));
     const waterAlerts = await sys.alertBus.affectedBy(ORG.water, W);
     expect(waterAlerts.length).to.equal(1);
     await sys.alertBus.connect(sys.people.water.agent).acknowledge(waterAlerts[0], ORG.water, W);
-    await sys.alertBus.connect(sys.people.water.agent).publish(ORG.water, W, 3, 1, ethers.id("evidence2"), await futureTs(3600));
+    await publishAlert(sys.alertBus, sys.people.water.agent, ORG.water, W, 3, 1, await futureTs(3600), ethers.id("evidence2"));
     expect((await sys.alertBus.affectedBy(ORG.hospital, H)).length).to.equal(1);
     // the hospital is not directly affected by the power alert (its backup edge is unconfirmed)
     expect((await sys.alertBus.affectedBy(ORG.hospital, ethers.id("hospital-backup"))).length).to.equal(0);
@@ -102,7 +102,7 @@ describe("Integration: full CascadeShield flow", function () {
     expect((await tx.wait())!.gasUsed).to.be.lt(500000n);
     const t2 = await submitRisk(sys.attestation, sys.people.power.agent, ORG.power, ethers.id("svc"), 3, 3, await futureTs(1000));
     expect((await t2.wait())!.gasUsed).to.be.lt(500000n);
-    const t3 = await sys.alertBus.connect(sys.people.power.agent).publish(ORG.power, ethers.id("svc"), 3, 1, ethers.id("e"), await futureTs(1000));
+    const t3 = await publishAlert(sys.alertBus, sys.people.power.agent, ORG.power, ethers.id("svc"), 3, 1, await futureTs(1000), ethers.id("e"));
     expect((await t3.wait())!.gasUsed).to.be.lt(500000n);
     const t4 = await sys.auditLog.connect(sys.people.power.agent).anchor(ORG.power, KIND.Plan, ethers.id("d"), await sys.auditLog.lastDigest(ORG.power), ethers.ZeroHash);
     expect((await t4.wait())!.gasUsed).to.be.lt(500000n);

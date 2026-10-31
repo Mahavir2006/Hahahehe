@@ -7,20 +7,20 @@ import "./AttestationRegistry.sol";
 /// @title AlertBus
 /// @notice Cross-organisation early-warning channel (BC-ALERT-*). An alert is only *relevant* to a
 ///         consumer service if a bilaterally confirmed dependency edge links it to the provider service.
+/// @dev    Severity and time-to-impact are NOT public: in the clear they would tell an attacker, in real time,
+///         that an attack is working and how long downstream services can hold out. The chain stores a salted
+///         `alertCommitment`; the values travel as `sealed` ciphertext for the affected consumers only.
 contract AlertBus {
     OrgRegistry public immutable orgRegistry;
     AttestationRegistry public immutable attestationRegistry;
 
-    enum Severity { Low, Medium, High, Critical }
-    enum TtiBucket { Under15m, Min15To60, Hours1To4, Over4h }
     enum Status { None, Active, Resolved }
 
     struct Alert {
         bytes32 providerOrg;
         bytes32 providerServiceHash;
-        Severity severity;
-        TtiBucket tti;
-        bytes32 evidenceCommitment;
+        bytes32 alertCommitment;   // keccak256(abi.encode(salt, uint8 severity, uint8 tti, bytes32 evidenceHash))
+        bytes32 dedupeKey;         // provider-blinded: keccak256(abi.encode(orgSecret, serviceHash, uint8 severity))
         uint256 expiry;
         uint256 createdAt;
         uint256 resolvedAt;
@@ -35,7 +35,7 @@ contract AlertBus {
     mapping(bytes32 => Alert) private _alerts;
     bytes32[] private _alertIds;
     mapping(bytes32 => mapping(bytes32 => uint256)) private _ackedAt;           // alertId => consumerOrg => ts
-    mapping(bytes32 => mapping(bytes32 => mapping(uint8 => bytes32))) private _lastAlert; // org=>service=>sev=>id
+    mapping(bytes32 => mapping(bytes32 => mapping(bytes32 => bytes32))) private _lastAlert; // org=>service=>dedupeKey=>id
     mapping(bytes32 => uint256) private _windowStart;
     mapping(bytes32 => uint256) private _windowCount;
     uint256 private _nonce;
@@ -44,9 +44,8 @@ contract AlertBus {
         bytes32 indexed alertId,
         bytes32 indexed providerOrg,
         bytes32 indexed providerServiceHash,
-        Severity severity,
-        TtiBucket tti,
-        bytes32 evidenceCommitment,
+        bytes32 alertCommitment,
+        bytes sealedPayload,
         uint256 expiry
     );
     event AlertDeduplicated(bytes32 indexed alertId, bytes32 indexed providerOrg);
@@ -55,8 +54,8 @@ contract AlertBus {
 
     error ZeroAddress();
     error NotOrgAgent(bytes32 orgId, address caller);
-    error InvalidSeverity();
-    error InvalidTti();
+    error EmptyCommitment();
+    error EmptyDisclosure();
     error InvalidExpiry();
     error RateLimitExceeded(bytes32 orgId);
     error AlertNotFound(bytes32 alertId);
@@ -75,18 +74,18 @@ contract AlertBus {
     function publish(
         bytes32 providerOrg,
         bytes32 providerServiceHash,
-        uint8 severity,
-        uint8 tti,
-        bytes32 evidenceCommitment,
-        uint256 expiry
+        bytes32 alertCommitment,
+        bytes32 dedupeKey,
+        uint256 expiry,
+        bytes calldata sealedPayload
     ) external returns (bytes32 alertId) {
         if (!orgRegistry.isOrgAgent(providerOrg, msg.sender)) revert NotOrgAgent(providerOrg, msg.sender);
-        if (severity > uint8(Severity.Critical)) revert InvalidSeverity();
-        if (tti > uint8(TtiBucket.Over4h)) revert InvalidTti();
+        if (alertCommitment == bytes32(0) || dedupeKey == bytes32(0)) revert EmptyCommitment();
+        if (sealedPayload.length == 0) revert EmptyDisclosure();
         if (expiry <= block.timestamp) revert InvalidExpiry();
 
-        // BC-ALERT-04 de-dupe: identical active alert inside the window collapses.
-        bytes32 prev = _lastAlert[providerOrg][providerServiceHash][severity];
+        // BC-ALERT-04 de-dupe: identical active alert (same service + same blinded severity) inside the window collapses.
+        bytes32 prev = _lastAlert[providerOrg][providerServiceHash][dedupeKey];
         if (prev != bytes32(0)) {
             Alert storage p = _alerts[prev];
             if (p.status == Status.Active && p.expiry > block.timestamp && block.timestamp < p.createdAt + DEDUPE_WINDOW) {
@@ -103,22 +102,21 @@ contract AlertBus {
         if (_windowCount[providerOrg] >= RATE_LIMIT) revert RateLimitExceeded(providerOrg);
         _windowCount[providerOrg] += 1;
 
-        alertId = keccak256(abi.encode(providerOrg, providerServiceHash, severity, _nonce++, block.chainid));
+        alertId = keccak256(abi.encode(providerOrg, providerServiceHash, alertCommitment, _nonce++, block.chainid));
         _alerts[alertId] = Alert({
             providerOrg: providerOrg,
             providerServiceHash: providerServiceHash,
-            severity: Severity(severity),
-            tti: TtiBucket(tti),
-            evidenceCommitment: evidenceCommitment,
+            alertCommitment: alertCommitment,
+            dedupeKey: dedupeKey,
             expiry: expiry,
             createdAt: block.timestamp,
             resolvedAt: 0,
             status: Status.Active
         });
         _alertIds.push(alertId);
-        _lastAlert[providerOrg][providerServiceHash][severity] = alertId;
+        _lastAlert[providerOrg][providerServiceHash][dedupeKey] = alertId;
 
-        emit CascadeAlert(alertId, providerOrg, providerServiceHash, Severity(severity), TtiBucket(tti), evidenceCommitment, expiry);
+        emit CascadeAlert(alertId, providerOrg, providerServiceHash, alertCommitment, sealedPayload, expiry);
     }
 
     /// @notice A consumer agent acknowledges an alert for one of its services. Requires a confirmed edge.
@@ -151,6 +149,14 @@ contract AlertBus {
     function getAlert(bytes32 alertId) external view returns (Alert memory) {
         if (_alerts[alertId].status == Status.None) revert AlertNotFound(alertId);
         return _alerts[alertId];
+    }
+
+    /// @notice A consumer checks the decrypted severity/tti against the on-chain commitment.
+    function verifyAlertDisclosure(bytes32 alertId, bytes32 salt, uint8 severity, uint8 tti, bytes32 evidenceHash)
+        external view returns (bool) {
+        Alert storage a = _alerts[alertId];
+        if (a.status == Status.None) return false;
+        return keccak256(abi.encode(salt, severity, tti, evidenceHash)) == a.alertCommitment;
     }
 
     function alertCount() external view returns (uint256) {

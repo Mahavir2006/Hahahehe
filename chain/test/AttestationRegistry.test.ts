@@ -5,7 +5,8 @@ import * as fs from "fs";
 import * as path from "path";
 import {
   deploySystem, ORG, submitDep, submitRisk, submitFinding, futureTs, confirmEdge,
-  DepArgs, attDomain, DEP_TYPES, RISK_TYPES,
+  DepArgs, attDomain, DEP_TYPES, RISK_TYPES, SEALED, BAND_SALT, FINDING_SALT,
+  termsCommitment, bandCommitment, advisoryKey, findingCommitment,
 } from "./helpers";
 
 const C_SVC = ethers.id("water-pumping");
@@ -68,12 +69,26 @@ describe("AttestationRegistry", function () {
         .to.be.revertedWithCustomError(sys.attestation, "SameOrg");
     });
 
-    it("BC-ATT-D-03 invalid bucket enums are rejected", async function () {
+    it("BC-ATT-D-03 buckets are committed, never stored in the clear; empty commitment or disclosure is rejected", async function () {
       const sys = await loadFixture(fx);
-      await expect(submitDep(sys.attestation, sys.people.water.agent, await depArgs({ strength: 3 })))
-        .to.be.revertedWithCustomError(sys.attestation, "InvalidDependencyStrength");
-      await expect(submitDep(sys.attestation, sys.people.water.agent, await depArgs({ tolerance: 4 })))
-        .to.be.revertedWithCustomError(sys.attestation, "InvalidToleranceBucket");
+      const a = await depArgs();
+      const tx = await submitDep(sys.attestation, sys.people.water.agent, a);
+      const rc = await tx.wait();
+      const ev = rc.logs.map((l: any) => { try { return sys.attestation.interface.parseLog(l); } catch { return null; } })
+        .find((e: any) => e && e.name === "DependencyAttestationSubmitted");
+      expect(ev.args.termsCommitment).to.equal(termsCommitment(a.strength, a.tolerance));
+      expect(ev.args.toObject()).to.not.have.property("strength");
+      expect(ev.args.toObject()).to.not.have.property("tolerance");
+      const nonce = 2;
+      const sig = await sys.people.water.agent.signTypedData(await attDomain(sys.attestation), DEP_TYPES, {
+        ...a, termsCommitment: ethers.ZeroHash, disclosureHash: ethers.keccak256(SEALED), nonce,
+      });
+      await expect(sys.attestation.connect(sys.people.water.agent).submitDependencyAttestation(
+        a.consumerOrg, a.consumerServiceHash, a.providerOrg, a.providerServiceHash, ethers.ZeroHash, nonce, a.expiry, SEALED, sig
+      )).to.be.revertedWithCustomError(sys.attestation, "EmptyCommitment");
+      await expect(sys.attestation.connect(sys.people.water.agent).submitDependencyAttestation(
+        a.consumerOrg, a.consumerServiceHash, a.providerOrg, a.providerServiceHash, termsCommitment(2, 1), nonce, a.expiry, "0x", sig
+      )).to.be.revertedWithCustomError(sys.attestation, "EmptyDisclosure");
     });
 
     it("BC-ATT-D-04 revoke by either side marks Revoked and isEdgeConfirmed becomes false", async function () {
@@ -169,17 +184,19 @@ describe("AttestationRegistry", function () {
       const sys = await loadFixture(fx);
       const a = await depArgs();
       const wrongDomain = { ...(await attDomain(sys.attestation)), chainId: 1 };
-      const sig = await sys.people.water.agent.signTypedData(wrongDomain, DEP_TYPES, { ...a, nonce: 1 });
+      const tc = termsCommitment(a.strength, a.tolerance);
+      const typed = { ...a, termsCommitment: tc, disclosureHash: ethers.keccak256(SEALED), nonce: 1 };
+      const sig = await sys.people.water.agent.signTypedData(wrongDomain, DEP_TYPES, typed);
       await expect(
         sys.attestation.connect(sys.people.water.agent).submitDependencyAttestation(
-          a.consumerOrg, a.consumerServiceHash, a.providerOrg, a.providerServiceHash, a.strength, a.tolerance, 1, a.expiry, sig
+          a.consumerOrg, a.consumerServiceHash, a.providerOrg, a.providerServiceHash, tc, 1, a.expiry, SEALED, sig
         )
       ).to.be.revertedWithCustomError(sys.attestation, "InvalidSigner");
       const otherContract = { ...(await attDomain(sys.attestation)), verifyingContract: sys.stranger.address };
-      const sig2 = await sys.people.water.agent.signTypedData(otherContract, DEP_TYPES, { ...a, nonce: 1 });
+      const sig2 = await sys.people.water.agent.signTypedData(otherContract, DEP_TYPES, typed);
       await expect(
         sys.attestation.connect(sys.people.water.agent).submitDependencyAttestation(
-          a.consumerOrg, a.consumerServiceHash, a.providerOrg, a.providerServiceHash, a.strength, a.tolerance, 1, a.expiry, sig2
+          a.consumerOrg, a.consumerServiceHash, a.providerOrg, a.providerServiceHash, tc, 1, a.expiry, SEALED, sig2
         )
       ).to.be.revertedWithCustomError(sys.attestation, "InvalidSigner");
     });
@@ -187,10 +204,19 @@ describe("AttestationRegistry", function () {
     it("BC-ATT-D-06 a tampered field invalidates the signature", async function () {
       const sys = await loadFixture(fx);
       const a = await depArgs();
-      const sig = await sys.people.water.agent.signTypedData(await attDomain(sys.attestation), DEP_TYPES, { ...a, nonce: 1 });
+      const tc = termsCommitment(a.strength, a.tolerance);
+      const sig = await sys.people.water.agent.signTypedData(await attDomain(sys.attestation), DEP_TYPES, {
+        ...a, termsCommitment: tc, disclosureHash: ethers.keccak256(SEALED), nonce: 1,
+      });
       await expect(
         sys.attestation.connect(sys.people.water.agent).submitDependencyAttestation(
-          a.consumerOrg, a.consumerServiceHash, a.providerOrg, a.providerServiceHash, 0 /*tampered*/, a.tolerance, 1, a.expiry, sig
+          a.consumerOrg, a.consumerServiceHash, a.providerOrg, a.providerServiceHash, termsCommitment(0, a.tolerance) /*tampered*/, 1, a.expiry, SEALED, sig
+        )
+      ).to.be.revertedWithCustomError(sys.attestation, "InvalidSigner");
+      // a relayer cannot swap the sealed ciphertext either: keccak256(sealed) is part of the signed struct
+      await expect(
+        sys.attestation.connect(sys.stranger).submitDependencyAttestation(
+          a.consumerOrg, a.consumerServiceHash, a.providerOrg, a.providerServiceHash, tc, 1, a.expiry, "0xdeadbeef", sig
         )
       ).to.be.revertedWithCustomError(sys.attestation, "InvalidSigner");
     });
@@ -232,20 +258,18 @@ describe("AttestationRegistry", function () {
       const ev = ethers.id("evidence");
       await submitRisk(sys.attestation, sys.people.power.agent, ORG.power, P_SVC, 3, 2, await futureTs(1000), ev);
       const r = await sys.attestation.getLatestRiskAttestation(ORG.power, P_SVC);
-      expect(r.riskBand).to.equal(3);
-      expect(r.criticalityBucket).to.equal(2);
+      expect(r.bandCommitment).to.equal(bandCommitment(3, 2));
+      expect(r.disclosureHash).to.equal(ethers.keccak256(SEALED));
       expect(r.evidenceCommitment).to.equal(ev);
       expect(r.signer).to.equal(sys.people.power.agent.address);
     });
 
-    it("BC-ATT-R-01 rejects wrong signer, bad enums, expired validity, deactivated org", async function () {
+    it("BC-ATT-R-01 rejects wrong signer, empty disclosure, expired validity, deactivated org", async function () {
       const sys = await loadFixture(fx);
       await expect(submitRisk(sys.attestation, sys.people.water.agent, ORG.power, P_SVC, 1, 1, await futureTs(1000)))
         .to.be.revertedWithCustomError(sys.attestation, "InvalidSigner");
-      await expect(submitRisk(sys.attestation, sys.people.power.agent, ORG.power, P_SVC, 4, 1, await futureTs(1000)))
-        .to.be.revertedWithCustomError(sys.attestation, "InvalidRiskBand");
-      await expect(submitRisk(sys.attestation, sys.people.power.agent, ORG.power, P_SVC, 1, 4, await futureTs(1000)))
-        .to.be.revertedWithCustomError(sys.attestation, "InvalidCriticalityBucket");
+      await expect(submitRisk(sys.attestation, sys.people.power.agent, ORG.power, P_SVC, 1, 1, await futureTs(1000), ethers.ZeroHash, undefined, "0x"))
+        .to.be.revertedWithCustomError(sys.attestation, "EmptyDisclosure");
       await expect(submitRisk(sys.attestation, sys.people.power.agent, ORG.power, P_SVC, 1, 1, (await futureTs(0)) - 5))
         .to.be.revertedWithCustomError(sys.attestation, "AttestationExpired");
       await sys.orgRegistry.deactivateOrg(ORG.power);
@@ -261,7 +285,36 @@ describe("AttestationRegistry", function () {
       }
       const hist = await sys.attestation.getRiskAttestationHistory(ORG.power, P_SVC);
       expect(hist.length).to.equal(3);
-      expect((await sys.attestation.getLatestRiskAttestation(ORG.power, P_SVC)).riskBand).to.equal(2);
+      expect((await sys.attestation.getLatestRiskAttestation(ORG.power, P_SVC)).bandCommitment).to.equal(bandCommitment(2, 1));
+    });
+
+    it("SEC-PRIV-01 the band is only a commitment on-chain; a recipient verifies the opened value", async function () {
+      const sys = await loadFixture(fx);
+      const tx = await submitRisk(sys.attestation, sys.people.power.agent, ORG.power, P_SVC, 3, 3, await futureTs(1000));
+      const rc = await tx.wait();
+      const ev = rc.logs.map((l: any) => { try { return sys.attestation.interface.parseLog(l); } catch { return null; } })
+        .find((e: any) => e && e.name === "RiskAttestationSubmitted");
+      expect(ev.args.toObject()).to.not.have.property("riskBand");
+      expect(ev.args.sealedBand).to.equal(SEALED);
+      const id = ev.args.attestationId;
+      expect(await sys.attestation.verifyBandDisclosure(id, BAND_SALT, 3, 3)).to.equal(true);
+      expect(await sys.attestation.verifyBandDisclosure(id, BAND_SALT, 2, 3)).to.equal(false);
+      expect(await sys.attestation.verifyBandDisclosure(id, ethers.id("guess"), 3, 3)).to.equal(false);
+      expect(await sys.attestation.verifyBandDisclosure(ethers.id("unknown"), BAND_SALT, 3, 3)).to.equal(false);
+      // a relayer cannot replace the ciphertext under the org's signature
+      const nonce = Number(await sys.attestation.riskNonces(sys.people.power.agent.address)) + 1;
+      await time.increase(2);
+      const value = {
+        orgId: ORG.power, serviceHash: P_SVC, bandCommitment: bandCommitment(1, 1), disclosureHash: ethers.keccak256(SEALED),
+        modelVersionHash: ethers.id("model-v1"), evidenceCommitment: ethers.ZeroHash, validUntil: await futureTs(1000), nonce,
+      };
+      const sig = await sys.people.power.agent.signTypedData(await attDomain(sys.attestation), RISK_TYPES, value);
+      await expect(sys.attestation.connect(sys.stranger).submitRiskAttestation(
+        ORG.power, P_SVC, value.bandCommitment, value.modelVersionHash, ethers.ZeroHash, value.validUntil, nonce, "0x1234", sig
+      )).to.be.revertedWithCustomError(sys.attestation, "InvalidSigner");
+      await expect(sys.attestation.connect(sys.stranger).submitRiskAttestation(
+        ORG.power, P_SVC, ethers.ZeroHash, value.modelVersionHash, ethers.ZeroHash, value.validUntil, nonce, SEALED, sig
+      )).to.be.revertedWithCustomError(sys.attestation, "EmptyCommitment");
     });
 
     it("BC-ATT-R-03 rate limit per service", async function () {
@@ -318,9 +371,24 @@ describe("AttestationRegistry", function () {
       const adv = ethers.id("advisory-1");
       const ts = await futureTs(0);
       await submitFinding(sys.attestation, sys.people.power.agent, ORG.power, adv, ethers.id("cves"), ts, true);
-      const f = await sys.attestation.getFindingAttestation(ORG.power, adv);
-      expect(f.matched).to.equal(true);
-      expect(f.advisoryContentHash).to.equal(adv);
+      // the public advisory hash cannot be used to look the finding up (the key is blinded with an org secret)
+      expect((await sys.attestation.getFindingAttestation(ORG.power, adv)).timestamp).to.equal(0);
+      const f = await sys.attestation.getFindingAttestation(ORG.power, advisoryKey(adv));
+      expect(f.advisoryKey).to.equal(advisoryKey(adv));
+      expect(f.findingCommitment).to.equal(findingCommitment(adv, ethers.id("cves"), true));
+      expect(f.toObject()).to.not.have.property("matched");
+    });
+
+    it("SEC-PRIV-02 a finding opens only to whoever the org gives the salt (selective disclosure)", async function () {
+      const sys = await loadFixture(fx);
+      const adv = ethers.id("advisory-1");
+      const cves = ethers.id("CVE-2024-0001");
+      await submitFinding(sys.attestation, sys.people.power.agent, ORG.power, adv, cves, 1, true);
+      const key = advisoryKey(adv);
+      expect(await sys.attestation.verifyFindingDisclosure(ORG.power, key, FINDING_SALT, adv, cves, true)).to.equal(true);
+      expect(await sys.attestation.verifyFindingDisclosure(ORG.power, key, FINDING_SALT, adv, cves, false)).to.equal(false);
+      expect(await sys.attestation.verifyFindingDisclosure(ORG.power, key, ethers.id("guess"), adv, cves, true)).to.equal(false);
+      expect(await sys.attestation.verifyFindingDisclosure(ORG.water, key, FINDING_SALT, adv, cves, true)).to.equal(false);
     });
 
     it("BC-ATT-F-02 duplicate (org, advisory) is idempotent: first record wins", async function () {
@@ -328,8 +396,8 @@ describe("AttestationRegistry", function () {
       const adv = ethers.id("advisory-1");
       await submitFinding(sys.attestation, sys.people.power.agent, ORG.power, adv, ethers.id("cves"), 1, true);
       await submitFinding(sys.attestation, sys.people.power.agent, ORG.power, adv, ethers.id("cves"), 2, false);
-      const f = await sys.attestation.getFindingAttestation(ORG.power, adv);
-      expect(f.matched).to.equal(true);
+      const f = await sys.attestation.getFindingAttestation(ORG.power, advisoryKey(adv));
+      expect(f.findingCommitment).to.equal(findingCommitment(adv, ethers.id("cves"), true));
       expect(f.processedAt).to.equal(1);
     });
 

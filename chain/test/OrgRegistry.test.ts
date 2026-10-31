@@ -321,6 +321,27 @@ describe("OrgRegistry", function () {
     });
   });
 
+  describe("setEncryptionKey", function () {
+    it("SEC-PRIV-04: org admin publishes and rotates the X25519 key used to seal disclosures to the org", async function () {
+      const { orgRegistry, admin, agentSigner, approver1, approver2, approver3, stranger } = await loadFixture(deployOrgRegistryFixture);
+      const orgId = ethers.id("power");
+      await orgRegistry.registerOrg(orgId, ethers.id("Grid Utility"), 0, admin.address, agentSigner.address,
+        [approver1.address, approver2.address, approver3.address], 2, [true, false, false]);
+
+      const k1 = ethers.id("x25519-pub-1");
+      await expect(orgRegistry.connect(admin).setEncryptionKey(orgId, k1)).to.emit(orgRegistry, "EncryptionKeySet");
+      expect(await orgRegistry.encryptionKeys(orgId)).to.equal(k1);
+      const k2 = ethers.id("x25519-pub-2");
+      await orgRegistry.connect(admin).setEncryptionKey(orgId, k2);
+      expect(await orgRegistry.encryptionKeys(orgId)).to.equal(k2);
+
+      await expect(orgRegistry.connect(stranger).setEncryptionKey(orgId, k1)).to.be.revertedWithCustomError(orgRegistry, "OnlyOrgAdmin");
+      await expect(orgRegistry.connect(agentSigner).setEncryptionKey(orgId, k1)).to.be.revertedWithCustomError(orgRegistry, "OnlyOrgAdmin");
+      await expect(orgRegistry.connect(admin).setEncryptionKey(orgId, ethers.ZeroHash)).to.be.revertedWithCustomError(orgRegistry, "InvalidEncryptionKey");
+      await expect(orgRegistry.connect(admin).setEncryptionKey(ethers.id("nobody"), k1)).to.be.revertedWithCustomError(orgRegistry, "OrgNotFound");
+    });
+  });
+
   describe("rotateAgentSigner", function () {
     it("BC-ORG-04: Should allow org admin to rotate agent signer", async function () {
       const { orgRegistry, admin, agentSigner, approver1, approver2, approver3, stranger } = await loadFixture(deployOrgRegistryFixture);

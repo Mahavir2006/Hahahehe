@@ -15,6 +15,7 @@ from backend.agents.framework import MessageBus
 from backend.agents.llm import LLMClient
 from backend.agents.org_node import OrgNodeRuntime, STRENGTH, tolerance_bucket
 from backend.agents.orchestrator import Orchestrator
+from backend.common import sealed
 from backend.common.chain import Chain, ChainWriter, ORGS, org_id
 from backend.common.events import EventIndexer
 from backend.humans import HumanApprover
@@ -47,9 +48,22 @@ class CascadeShieldSystem:
             self.events.append(ev)
 
     # ------------------------------------------------------------------ setup
+    def register_encryption_keys(self) -> Dict[str, str]:
+        """Onboarding (org admin, not the agent): publish each org's X25519 key so members can seal disclosures to it."""
+        out = {}
+        for org, node in self.nodes.items():
+            pub = node.encryption_public_key
+            if bytes(self.chain.call("OrgRegistry", "encryptionKeys", org_id(org))) == pub:
+                out[org] = "registered"
+                continue
+            r = self.writer.submit(f"enckey:{org}:{pub.hex()[:16]}", "OrgRegistry", "setEncryptionKey", [org_id(org), pub], f"{org}/admin")
+            out[org] = r.status
+        return out
+
     def bootstrap(self, extra_unilateral: bool = True) -> Dict[str, Any]:
         """Supply-chain check, bilateral dependency handshake + attestations, baseline risk attestations."""
         out: Dict[str, Any] = {"supply_chain": {}, "edges": [], "baseline": {}}
+        out["encryption_keys"] = self.register_encryption_keys()
         for org, node in self.nodes.items():
             out["supply_chain"][org] = node.supply_chain_check()
         deps = json.loads((ROOT / "data" / "cross_org_dependencies.json").read_text(encoding="utf-8"))
@@ -59,14 +73,15 @@ class CascadeShieldSystem:
             ph = p.handshake_accept(c.handshake_offer(d["consumer_service"]))  # provider learns consumer hash
             assert ch == p.svc_hash(d["provider_service"]) and ph == c.svc_hash(d["consumer_service"])
             strength, tol = STRENGTH[d["dependency_strength"]], tolerance_bucket(d["tolerance_minutes"])
-            r1 = c.attest_dependency(d["consumer_org"], c.svc_hash(d["consumer_service"]), d["provider_org"], ph if False else p.svc_hash(d["provider_service"]), strength, tol)
-            r2 = p.attest_dependency(d["consumer_org"], c.svc_hash(d["consumer_service"]), d["provider_org"], p.svc_hash(d["provider_service"]), strength, tol)
+            terms_salt = sealed.random_salt()  # agreed in the same off-chain handshake; both sides commit to identical terms
+            r1 = c.attest_dependency(d["consumer_org"], c.svc_hash(d["consumer_service"]), d["provider_org"], ch, strength, tol, terms_salt)
+            r2 = p.attest_dependency(d["consumer_org"], ph, d["provider_org"], p.svc_hash(d["provider_service"]), strength, tol, terms_salt)
             out["edges"].append({"edge": f"{d['consumer_org']}:{d['consumer_service']} -> {d['provider_org']}:{d['provider_service']}", "consumer": r1.status, "provider": r2.status})
         if extra_unilateral:
             # An edge only ONE side attests: must stay unconfirmed and never feed the cascade (BC-ATT-D-01 / AG-CAS-04).
             h, pw = self.nodes["hospital"], self.nodes["power"]
             svc = next(iter(h.services))
-            r = h.attest_dependency("hospital", h.svc_hash(svc), "power", pw.svc_hash(next(iter(pw.services))), 1, 0)
+            r = h.attest_dependency("hospital", h.svc_hash(svc), "power", pw.svc_hash(next(iter(pw.services))), 1, 0, sealed.random_salt())
             out["unilateral"] = r.status
         for org, node in self.nodes.items():
             orch = self.orch[org]

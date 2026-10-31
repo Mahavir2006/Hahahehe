@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { deploySystem, ORG, futureTs, confirmEdge, submitDep } from "./helpers";
+import { deploySystem, ORG, futureTs, confirmEdge, submitDep, publishAlert, alertCommitment, dedupeKey, SEALED, ALERT_SALT } from "./helpers";
 
 const P_SVC = ethers.id("power-substation-7");
 const W_SVC = ethers.id("water-pumping");
@@ -17,7 +17,7 @@ describe("AlertBus", function () {
   };
 
   async function publish(sys: any, severity = 3, tti = 1, ttl = 3600, svc = P_SVC, org: "power" | "water" | "hospital" = "power") {
-    const tx = await sys.alertBus.connect(sys.people[org].agent).publish(ORG[org], svc, severity, tti, ethers.id("ev"), await futureTs(ttl));
+    const tx = await publishAlert(sys.alertBus, sys.people[org].agent, ORG[org], svc, severity, tti, await futureTs(ttl));
     const rc = await tx.wait();
     const ev = rc.logs.map((l: any) => { try { return sys.alertBus.interface.parseLog(l); } catch { return null; } }).find((e: any) => e && (e.name === "CascadeAlert" || e.name === "AlertDeduplicated"));
     return ev.args.alertId as string;
@@ -26,7 +26,7 @@ describe("AlertBus", function () {
   describe("publish", function () {
     it("BC-ALERT-01 an org agent can publish an alert and CascadeAlert is emitted", async function () {
       const sys = await loadFixture(fx);
-      await expect(sys.alertBus.connect(sys.people.power.agent).publish(ORG.power, P_SVC, 3, 1, ethers.id("ev"), await futureTs(3600)))
+      await expect(publishAlert(sys.alertBus, sys.people.power.agent, ORG.power, P_SVC, 3, 1, await futureTs(3600)))
         .to.emit(sys.alertBus, "CascadeAlert");
       expect(await sys.alertBus.alertCount()).to.equal(1);
     });
@@ -34,17 +34,37 @@ describe("AlertBus", function () {
     it("BC-ALERT-01 only that org's agent can publish for it", async function () {
       const sys = await loadFixture(fx);
       for (const who of [sys.stranger, sys.people.water.agent, sys.people.power.approvers[0]]) {
-        await expect(sys.alertBus.connect(who).publish(ORG.power, P_SVC, 3, 1, ethers.id("ev"), await futureTs(3600)))
+        await expect(publishAlert(sys.alertBus, who, ORG.power, P_SVC, 3, 1, await futureTs(3600)))
           .to.be.revertedWithCustomError(sys.alertBus, "NotOrgAgent");
       }
     });
 
-    it("BC-ALERT-04 validates severity, tti and expiry", async function () {
+    it("BC-ALERT-04 validates commitment, disclosure and expiry", async function () {
       const sys = await loadFixture(fx);
       const a = sys.alertBus.connect(sys.people.power.agent);
-      await expect(a.publish(ORG.power, P_SVC, 4, 1, ethers.id("ev"), await futureTs(60))).to.be.revertedWithCustomError(sys.alertBus, "InvalidSeverity");
-      await expect(a.publish(ORG.power, P_SVC, 1, 4, ethers.id("ev"), await futureTs(60))).to.be.revertedWithCustomError(sys.alertBus, "InvalidTti");
-      await expect(a.publish(ORG.power, P_SVC, 1, 1, ethers.id("ev"), (await futureTs(0)) - 1)).to.be.revertedWithCustomError(sys.alertBus, "InvalidExpiry");
+      const c = alertCommitment(3, 1), k = dedupeKey(P_SVC, 3);
+      await expect(a.publish(ORG.power, P_SVC, ethers.ZeroHash, k, await futureTs(60), SEALED)).to.be.revertedWithCustomError(sys.alertBus, "EmptyCommitment");
+      await expect(a.publish(ORG.power, P_SVC, c, ethers.ZeroHash, await futureTs(60), SEALED)).to.be.revertedWithCustomError(sys.alertBus, "EmptyCommitment");
+      await expect(a.publish(ORG.power, P_SVC, c, k, await futureTs(60), "0x")).to.be.revertedWithCustomError(sys.alertBus, "EmptyDisclosure");
+      await expect(a.publish(ORG.power, P_SVC, c, k, (await futureTs(0)) - 1, SEALED)).to.be.revertedWithCustomError(sys.alertBus, "InvalidExpiry");
+    });
+
+    it("SEC-PRIV-03 severity and time-to-impact are never public; consumers verify the opened values", async function () {
+      const sys = await loadFixture(fx);
+      const tx = await publishAlert(sys.alertBus, sys.people.power.agent, ORG.power, P_SVC, 3, 0, await futureTs(3600));
+      const rc = await tx.wait();
+      const ev = rc.logs.map((l: any) => { try { return sys.alertBus.interface.parseLog(l); } catch { return null; } })
+        .find((e: any) => e && e.name === "CascadeAlert");
+      expect(ev.args.toObject()).to.not.have.property("severity");
+      expect(ev.args.toObject()).to.not.have.property("tti");
+      expect(ev.args.sealedPayload).to.equal(SEALED);
+      const stored = await sys.alertBus.getAlert(ev.args.alertId);
+      expect(stored.toObject()).to.not.have.property("severity");
+      const id = ev.args.alertId;
+      expect(await sys.alertBus.verifyAlertDisclosure(id, ALERT_SALT, 3, 0, ethers.id("ev"))).to.equal(true);
+      expect(await sys.alertBus.verifyAlertDisclosure(id, ALERT_SALT, 2, 0, ethers.id("ev"))).to.equal(false);
+      expect(await sys.alertBus.verifyAlertDisclosure(id, ALERT_SALT, 3, 1, ethers.id("ev"))).to.equal(false);
+      expect(await sys.alertBus.verifyAlertDisclosure(ethers.id("nope"), ALERT_SALT, 3, 0, ethers.id("ev"))).to.equal(false);
     });
 
     it("BC-ALERT-04 identical active alerts inside the de-dupe window collapse to one", async function () {
@@ -66,7 +86,7 @@ describe("AlertBus", function () {
     it("BC-ALERT-06 rate-limits an org's alert spam, per org", async function () {
       const sys = await loadFixture(fx);
       for (let i = 0; i < 30; i++) await publish(sys, 3, 1, 3600, ethers.id("svc" + i));
-      await expect(sys.alertBus.connect(sys.people.power.agent).publish(ORG.power, ethers.id("svc-over"), 3, 1, ethers.id("ev"), await futureTs(3600)))
+      await expect(publishAlert(sys.alertBus, sys.people.power.agent, ORG.power, ethers.id("svc-over"), 3, 1, await futureTs(3600)))
         .to.be.revertedWithCustomError(sys.alertBus, "RateLimitExceeded");
       // other orgs are unaffected; the window resets after an hour
       await publish(sys, 3, 1, 3600, W_SVC, "water");
@@ -77,7 +97,7 @@ describe("AlertBus", function () {
     it("BC-ALERT-01 deactivated orgs cannot publish", async function () {
       const sys = await loadFixture(fx);
       await sys.orgRegistry.deactivateOrg(ORG.power);
-      await expect(sys.alertBus.connect(sys.people.power.agent).publish(ORG.power, P_SVC, 3, 1, ethers.id("ev"), await futureTs(60)))
+      await expect(publishAlert(sys.alertBus, sys.people.power.agent, ORG.power, P_SVC, 3, 1, await futureTs(60)))
         .to.be.revertedWithCustomError(sys.alertBus, "NotOrgAgent");
     });
   });

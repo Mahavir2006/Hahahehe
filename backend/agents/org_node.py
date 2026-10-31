@@ -19,7 +19,8 @@ from eth_utils import keccak
 from backend.agents.framework import IsolationError, MessageBus
 from backend.agents.llm import LLMClient
 from backend.common.audit import AuditAnchorService
-from backend.common.chain import Chain, ChainWriter, WriteResult, org_id, org_salt, service_hash
+from backend.common import sealed
+from backend.common.chain import ORGS, Chain, ChainWriter, WriteResult, org_id, org_salt, service_hash
 from backend.graph.cascade import IntraOrgGraph
 from backend.risk import model as risk
 
@@ -90,6 +91,8 @@ class OrgNodeRuntime:
         self.inventory: Dict[str, dict] = {a["asset_id"]: a for a in inv}
         self.services: Dict[str, dict] = {s["service_id"]: s for s in svcs}
         self._salt = self._derive_salt()
+        self._enc_key = self._derive_enc_key()
+        self.finding_openings: Dict[str, Dict[str, str]] = {}  # private: salts that open our finding commitments
         for sid, s in self.services.items():
             self.labels[self.svc_hash(sid).hex()] = f"{org}:{s['name']}"
 
@@ -107,9 +110,36 @@ class OrgNodeRuntime:
         self.acked: set = set()
 
     # -------------------------------------------------------------- identity
+    def _keys(self) -> Dict[str, Any]:
+        return json.loads((self.data_dir / "orgs" / self.org / "private_keys.dev.json").read_text(encoding="utf-8"))
+
     def _derive_salt(self) -> bytes:
-        keys = json.loads((self.data_dir / "orgs" / self.org / "private_keys.dev.json").read_text(encoding="utf-8"))
-        return org_salt(self.org, keys["agent_signer"]["private_key"])
+        return org_salt(self.org, self._keys()["agent_signer"]["private_key"])
+
+    def _derive_enc_key(self):
+        """X25519 key that other members seal disclosures to (dev: derived from the org's admin key)."""
+        return sealed.private_key_from_secret(bytes.fromhex(self._keys()["admin"]["private_key"].replace("0x", "")))
+
+    @property
+    def encryption_public_key(self) -> bytes:
+        return sealed.public_bytes(self._enc_key)
+
+    def recipients(self, orgs: Optional[List[str]] = None) -> List[bytes]:
+        """Registered encryption keys of `orgs` (default: every member) plus our own, read from OrgRegistry."""
+        out = [self.encryption_public_key]
+        for o in orgs if orgs is not None else ORGS:
+            k = bytes(self.chain.call("OrgRegistry", "encryptionKeys", org_id(o)))
+            if k != bytes(32) and k not in out:
+                out.append(k)
+        return out
+
+    def open_disclosure(self, blob: Any) -> Optional[Dict[str, Any]]:
+        """Decrypt a sealed disclosure addressed to this org (None if we are not a recipient)."""
+        raw = sealed.from_hex(blob) if isinstance(blob, str) else bytes(blob)
+        return sealed.open_sealed(raw, self._enc_key)
+
+    def blind(self, *parts: Any) -> bytes:
+        return sealed.blind(self._salt, *parts)
 
     @property
     def agent_address(self) -> str:
@@ -189,50 +219,68 @@ class OrgNodeRuntime:
     def _sign(self, types: dict, msg: dict) -> bytes:
         return self.chain.sign_typed(f"{self.org}/agent", self.chain.attestation_domain(), types, msg)
 
-    def attest_dependency(self, consumer_org: str, consumer_hash: bytes, provider_org: str, provider_hash: bytes, strength: int, tolerance: int, ttl: int = 7 * 86400) -> WriteResult:
+    def attest_dependency(self, consumer_org: str, consumer_hash: bytes, provider_org: str, provider_hash: bytes, strength: int, tolerance: int,
+                          terms_salt: bytes, ttl: int = 7 * 86400) -> WriteResult:
+        """Both sides sign the same terms commitment (salt agreed in the handshake); strength/tolerance only travel sealed."""
         with self._lock:
             expiry = self.chain.block_timestamp() + ttl
             nonce = self._next("dependencyNonces")
+            tc = sealed.terms_commitment(terms_salt, strength, tolerance)
+            box = sealed.seal({"kind": "dependency", "strength": strength, "tolerance": tolerance, "salt": terms_salt.hex()}, self.recipients())
             msg = {
                 "consumerOrg": org_id(consumer_org), "consumerServiceHash": consumer_hash, "providerOrg": org_id(provider_org),
-                "providerServiceHash": provider_hash, "strength": strength, "tolerance": tolerance, "nonce": nonce, "expiry": expiry,
+                "providerServiceHash": provider_hash, "termsCommitment": tc, "disclosureHash": keccak(box), "nonce": nonce, "expiry": expiry,
             }
             sig = self._sign(self.chain.DEP_TYPES, msg)
-            key = f"dep:{self.org}:{consumer_hash.hex()[:16]}:{provider_hash.hex()[:16]}:{strength}:{tolerance}:{nonce}"
-            return self.writer.submit(key, "AttestationRegistry", "submitDependencyAttestation", [msg["consumerOrg"], consumer_hash, msg["providerOrg"], provider_hash, strength, tolerance, nonce, expiry, sig])
+            key = f"dep:{self.org}:{consumer_hash.hex()[:16]}:{provider_hash.hex()[:16]}:{tc.hex()[:16]}:{nonce}"
+            return self.writer.submit(key, "AttestationRegistry", "submitDependencyAttestation", [msg["consumerOrg"], consumer_hash, msg["providerOrg"], provider_hash, tc, nonce, expiry, box, sig])
 
     def attest_risk(self, service_id: str, band: str, criticality: str, evidence: Dict[str, Any], ttl: int = 86400) -> WriteResult:
         with self._lock:
             sh = self.svc_hash(service_id)
-            salt = keccak(text=f"evidence-{self.org}-{service_id}-{json.dumps(evidence, sort_keys=True, default=str)}")
+            salt = sealed.random_salt()  # random: a salt derived from guessable inputs would let the commitment be brute-forced
             ev_hash = bytes.fromhex(hashlib.sha256(json.dumps(evidence, sort_keys=True, default=str).encode()).hexdigest())
             from eth_abi import encode as abi_encode
 
             commitment = keccak(abi_encode(["bytes32", "bytes32"], [salt, ev_hash]))
+            band_salt = sealed.random_salt()
+            bc = sealed.band_commitment(band_salt, BAND[band], CRIT[criticality])
+            box = sealed.seal({"kind": "risk", "band": BAND[band], "crit": CRIT[criticality], "salt": band_salt.hex()}, self.recipients())
             validity = self.chain.block_timestamp() + ttl
             nonce = self._next("riskNonces")
             mv = keccak(text=risk.RiskModel.get().version)
             msg = {
-                "orgId": self.org_id, "serviceHash": sh, "riskBand": BAND[band], "criticalityBucket": CRIT[criticality], "modelVersionHash": mv,
+                "orgId": self.org_id, "serviceHash": sh, "bandCommitment": bc, "disclosureHash": keccak(box), "modelVersionHash": mv,
                 "evidenceCommitment": commitment, "validUntil": validity, "nonce": nonce,
             }
             sig = self._sign(self.chain.RISK_TYPES, msg)
-            key = f"risk:{self.org}:{sh.hex()[:16]}:{band}:{commitment.hex()[:12]}:{nonce}"
-            res = self.writer.submit(key, "AttestationRegistry", "submitRiskAttestation", [self.org_id, sh, BAND[band], CRIT[criticality], mv, commitment, validity, nonce, sig])
+            key = f"risk:{self.org}:{sh.hex()[:16]}:{bc.hex()[:12]}:{nonce}"
+            res = self.writer.submit(key, "AttestationRegistry", "submitRiskAttestation", [self.org_id, sh, bc, mv, commitment, validity, nonce, box, sig])
             res.receipt = None
             self._last_disclosure = {"salt": "0x" + salt.hex(), "assessment_hash": "0x" + ev_hash.hex(), "commitment": "0x" + commitment.hex()}
             return res
 
     def attest_finding(self, advisory_hash_hex: str, cves: List[str], matched: bool) -> WriteResult:
+        """Proof that we processed the advisory, revealing nothing: the lookup key is blinded with our secret (the
+        public advisory hash cannot be looked up) and the outcome is a commitment. Nobody else needs the outcome, so
+        there is no sealed copy; the opening stays private for selective disclosure to an auditor."""
         with self._lock:
             ah = bytes.fromhex(advisory_hash_hex)
             ch = keccak(text=",".join(sorted(cves)))
+            ak = self.blind(ah)
+            salt = sealed.random_salt()
+            fc = sealed.finding_commitment(salt, ah, ch, matched)
             nonce = self._next("findingNonces")
             ts = self.chain.block_timestamp()
-            msg = {"orgId": self.org_id, "advisoryContentHash": ah, "cveSetHash": ch, "processedAt": ts, "matched": matched, "nonce": nonce}
+            msg = {"orgId": self.org_id, "advisoryKey": ak, "findingCommitment": fc, "processedAt": ts, "nonce": nonce}
             sig = self._sign(self.chain.FINDING_TYPES, msg)
             key = f"finding:{self.org}:{advisory_hash_hex[:24]}"
-            return self.writer.submit(key, "AttestationRegistry", "submitFindingAttestation", [self.org_id, ah, ch, ts, matched, nonce, sig])
+            res = self.writer.submit(key, "AttestationRegistry", "submitFindingAttestation", [self.org_id, ak, fc, ts, nonce, sig])
+            if res.status == "confirmed":
+                self.finding_openings[advisory_hash_hex] = {
+                    "advisory_key": "0x" + ak.hex(), "salt": "0x" + salt.hex(), "cve_set_hash": "0x" + ch.hex(), "matched": matched,
+                }
+            return res
 
     # ---------------------------------------------------------------- status
     def service_band(self, assets: Optional[List[risk.AssetCtx]] = None, upstream: bool = True) -> Dict[str, Dict[str, Any]]:

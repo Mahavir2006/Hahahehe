@@ -1,6 +1,10 @@
 """
-CascadeAgent (AG-CAS-*): intra-org propagation on private data, cross-org propagation on PUBLIC attestations only,
+CascadeAgent (AG-CAS-*): intra-org propagation on private data, cross-org propagation on on-chain attestations only,
 early-warning alerts through AlertBus, and reaction to other orgs' alerts.
+
+SEC-PRIV: bands, dependency terms and alert severity are not public on-chain. This org opens the sealed
+disclosures addressed to it and accepts a value only if it matches the on-chain commitment. Anything it cannot
+open or verify is treated conservatively (unknown band / medium strength), never trusted.
 """
 
 from __future__ import annotations
@@ -10,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field
 
 from backend.agents.framework import BaseAgent, SideEffect, agent_tool
+from backend.common import sealed
 from backend.common.chain import ORG_NAMES, org_id
 from backend.graph.cascade import (BAND_NAMES, CRIT_NAMES, STRENGTH_NAMES, CrossOrgGraph, EdgeAtt, NodeAtt)
 from backend.common.config import settings
@@ -38,6 +43,7 @@ class AlertIn(BaseModel):
     severity: int
     tti: int
     evidence: str = ""
+    recipients: List[str] = Field(default_factory=list)   # direct consumer orgs; only they (and we) can open it
 
 
 class AlertOut(BaseModel):
@@ -63,6 +69,11 @@ class AckOut(BaseModel):
 
 
 SEVERITY = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+UNVERIFIED_SEVERITY = 2   # an alert we cannot open/verify is treated as "high", not ignored
+
+
+def _b(h: str) -> bytes:
+    return bytes.fromhex(h[2:] if h.startswith("0x") else h)
 
 
 class CascadeAgent(BaseAgent):
@@ -75,10 +86,29 @@ class CascadeAgent(BaseAgent):
         return IntraOut(asset_p=p, service_p=self.node.graph.service_impact(p))
 
     # ------------------------------------------------------------ public graph
+    def _open_terms(self, a: Dict[str, Any]) -> Optional[Tuple[int, int]]:
+        d = self.node.open_disclosure(a["sealedTerms"])
+        if not d or d.get("kind") != "dependency" or d.get("strength") not in (0, 1, 2) or d.get("tolerance") not in (0, 1, 2, 3):
+            return None
+        if sealed.terms_commitment(_b(d["salt"]), d["strength"], d["tolerance"]) != _b(a["termsCommitment"]):
+            return None
+        return d["strength"], d["tolerance"]
+
+    def _open_band(self, a: Dict[str, Any]) -> Optional[Tuple[int, int]]:
+        d = self.node.open_disclosure(a["sealedBand"])
+        if not d or d.get("kind") != "risk" or d.get("band") not in (0, 1, 2, 3) or d.get("crit") not in (0, 1, 2, 3):
+            return None
+        if sealed.band_commitment(_b(d["salt"]), d["band"], d["crit"]) != _b(a["bandCommitment"]):
+            return None
+        return d["band"], d["crit"]
+
     @agent_tool("build_cross_graph", GraphIn, GraphOut, SideEffect.read_chain)
     def _graph(self, i: GraphIn) -> GraphOut:
-        """Public attestations only. Edge confirmation is read from the contract, not assumed."""
+        """On-chain attestations only. Edge confirmation is read from the contract, not assumed; terms and bands come
+        from sealed disclosures this org can open, checked against the on-chain commitments."""
         n = self.node
+        if n.indexer:
+            n.indexer.sync()
         edges, seen = [], set()
         evs = n.indexer.query("AttestationRegistry", "DependencyAttestationSubmitted", limit=5000) if n.indexer else []
         for ev in evs:
@@ -88,14 +118,17 @@ class CascadeAgent(BaseAgent):
                 continue
             seen.add(key)
             co, po = ORG_NAMES[a["consumerOrg"]], ORG_NAMES[a["providerOrg"]]
-            ch, ph = bytes.fromhex(a["consumerServiceHash"][2:]), bytes.fromhex(a["providerServiceHash"][2:])
+            ch, ph = _b(a["consumerServiceHash"]), _b(a["providerServiceHash"])
             confirmed = bool(n.chain.call("AttestationRegistry", "isEdgeConfirmed", org_id(co), ch, org_id(po), ph))
+            terms = self._open_terms(a)
+            strength, tolerance = terms if terms else (1, 1)   # undisclosed: conservative medium / 15-60 min
             edges.append(
                 {
                     "consumer_org": co, "consumer_service": a["consumerServiceHash"][2:], "provider_org": po, "provider_service": a["providerServiceHash"][2:],
-                    "strength": STRENGTH_NAMES[a["strength"]], "tolerance": a["tolerance"], "confirmed": confirmed,
+                    "strength": STRENGTH_NAMES[strength], "tolerance": tolerance, "confirmed": confirmed, "disclosed": terms is not None,
                 }
             )
+        risk_evs = {e["args"]["attestationId"]: e["args"] for e in n.indexer.query("AttestationRegistry", "RiskAttestationSubmitted", limit=5000)} if n.indexer else {}
         nodes_k = {}
         for e in edges:
             nodes_k[(e["consumer_org"], e["consumer_service"])] = 1
@@ -106,8 +139,10 @@ class CascadeAgent(BaseAgent):
             valid = bool(n.chain.call("AttestationRegistry", "isRiskAttestationValid", org_id(o), hb))
             band, crit = "unknown", "medium"
             if valid:
-                r = n.chain.call("AttestationRegistry", "getLatestRiskAttestation", org_id(o), hb)
-                band, crit = BAND_NAMES[int(r[2])], CRIT_NAMES[int(r[3])]
+                aid = "0x" + bytes(n.chain.call("AttestationRegistry", "latestRiskId", org_id(o), hb)).hex()
+                opened = self._open_band(risk_evs[aid]) if aid in risk_evs else None
+                if opened:
+                    band, crit = BAND_NAMES[opened[0]], CRIT_NAMES[opened[1]]
             nodes.append({"org": o, "service_hash": h, "band": band, "criticality": crit, "label": n.labels.get(h, f"{o}:{h[:8]}")})
         return GraphOut(nodes=nodes, edges=edges)
 
@@ -125,8 +160,11 @@ class CascadeAgent(BaseAgent):
         sh = n.svc_hash(i.service_id)
         ev = bytes.fromhex(__import__("hashlib").sha256(i.evidence.encode()).hexdigest())
         expiry = n.chain.block_timestamp() + 3600
+        salt = sealed.random_salt()
+        commitment = sealed.alert_commitment(salt, i.severity, i.tti, ev)
+        box = sealed.seal({"kind": "alert", "severity": i.severity, "tti": i.tti, "evidence": ev.hex(), "salt": salt.hex()}, n.recipients(i.recipients))
         key = f"alert:{n.org}:{sh.hex()[:16]}:{i.severity}:{n.chain.block_timestamp() // 300}"
-        r = n.writer.submit(key, "AlertBus", "publish", [n.org_id, sh, i.severity, i.tti, ev, expiry])
+        r = n.writer.submit(key, "AlertBus", "publish", [n.org_id, sh, commitment, n.blind(sh, i.severity), expiry, box])
         aid = None
         if r.receipt is not None:
             for lg in r.receipt["logs"]:
@@ -175,14 +213,29 @@ class CascadeAgent(BaseAgent):
                     if rep2 and rep2["chain"] and max(c["p_degraded"] for c in rep2["chain"]) >= settings.cascade_alert_threshold:
                         tti = rep2["chain"][0]["time_to_impact_minutes"]
                         bucket = 0 if tti < 15 else 1 if tti <= 60 else 2 if tti <= 240 else 3
-                        out = self.call("publish_alert", service_id=sid2, severity=SEVERITY[b2["band"]], tti=bucket, evidence=f"{sid2}:{b2['risk']}")
+                        consumers = sorted({e.consumer_org for e in g.edges if (e.provider_org, e.provider_service) == (n.org, sh)})
+                        out = self.call("publish_alert", service_id=sid2, severity=SEVERITY[b2["band"]], tti=bucket, evidence=f"{sid2}:{b2['risk']}", recipients=consumers)
                         report["alerts"].append({"service": sid2, "severity": b2["band"], "status": out.status, "alert_id": out.alert_id, "first_tti": tti})
         return report
+
+    def _alert_severity(self, aid: str, events: Dict[str, Dict[str, Any]]) -> Tuple[int, bool]:
+        """Severity from the sealed disclosure, verified against the stored commitment; conservative if unverifiable."""
+        n = self.node
+        a = events.get(aid)
+        d = n.open_disclosure(a["sealedPayload"]) if a else None
+        if d and d.get("kind") == "alert" and d.get("severity") in (0, 1, 2, 3) and d.get("tti") in (0, 1, 2, 3):
+            stored = bytes(n.chain.call("AlertBus", "getAlert", _b(aid))[2])
+            if sealed.alert_commitment(_b(d["salt"]), d["severity"], d["tti"], _b(d["evidence"])) == stored:
+                return d["severity"], True
+        return UNVERIFIED_SEVERITY, False
 
     def react_to_alerts(self) -> Dict[str, Any]:
         """AG-CAS-06: poll the chain for alerts that reach our services via CONFIRMED edges, acknowledge, and raise exposure."""
         n = self.node
         reacted = []
+        if n.indexer:
+            n.indexer.sync()
+        alert_evs = {e["args"]["alertId"]: e["args"] for e in n.indexer.query("AlertBus", "CascadeAlert", limit=5000)} if n.indexer else {}
         for sid in n.services:
             res = self.call("poll_alerts", service_id=sid)
             for aid in res.alert_ids:
@@ -191,10 +244,10 @@ class CascadeAgent(BaseAgent):
                 ack = self.call("acknowledge_alert", alert_id=aid, service_id=sid)
                 if ack.status in ("confirmed", "duplicate"):
                     n.acked = getattr(n, "acked", set()) | {aid}
-                    sev = int(n.chain.call("AlertBus", "getAlert", bytes.fromhex(aid[2:]))[2])
+                    sev, verified = self._alert_severity(aid, alert_evs)
                     # upstream failure hypothesis: exposure of the consumer service grows with the alert severity
                     exposure = [0.15, 0.35, 0.6, 0.85][sev]
                     n.upstream[sid] = max(n.upstream.get(sid, 0.0), exposure)
-                    reacted.append({"alert_id": aid, "service": sid, "ack": ack.status, "upstream_exposure": n.upstream[sid]})
+                    reacted.append({"alert_id": aid, "service": sid, "ack": ack.status, "upstream_exposure": n.upstream[sid], "disclosure_verified": verified})
                     self.log("decision", note="reacted to upstream alert", alert_id=aid, service=sid)
         return {"reacted": reacted}

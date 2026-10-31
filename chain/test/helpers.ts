@@ -80,8 +80,8 @@ export const DEP_TYPES = {
     { name: "consumerServiceHash", type: "bytes32" },
     { name: "providerOrg", type: "bytes32" },
     { name: "providerServiceHash", type: "bytes32" },
-    { name: "strength", type: "uint8" },
-    { name: "tolerance", type: "uint8" },
+    { name: "termsCommitment", type: "bytes32" },
+    { name: "disclosureHash", type: "bytes32" },
     { name: "nonce", type: "uint256" },
     { name: "expiry", type: "uint256" },
   ],
@@ -90,8 +90,8 @@ export const RISK_TYPES = {
   RiskAttestation: [
     { name: "orgId", type: "bytes32" },
     { name: "serviceHash", type: "bytes32" },
-    { name: "riskBand", type: "uint8" },
-    { name: "criticalityBucket", type: "uint8" },
+    { name: "bandCommitment", type: "bytes32" },
+    { name: "disclosureHash", type: "bytes32" },
     { name: "modelVersionHash", type: "bytes32" },
     { name: "evidenceCommitment", type: "bytes32" },
     { name: "validUntil", type: "uint256" },
@@ -101,13 +101,36 @@ export const RISK_TYPES = {
 export const FINDING_TYPES = {
   FindingAttestation: [
     { name: "orgId", type: "bytes32" },
-    { name: "advisoryContentHash", type: "bytes32" },
-    { name: "cveSetHash", type: "bytes32" },
+    { name: "advisoryKey", type: "bytes32" },
+    { name: "findingCommitment", type: "bytes32" },
     { name: "processedAt", type: "uint256" },
-    { name: "matched", type: "bool" },
     { name: "nonce", type: "uint256" },
   ],
 };
+
+// ---------------------------------------------------------------- confidentiality helpers
+// The contracts only ever see commitments + opaque ciphertext. Tests use fixed salts and a dummy "sealed"
+// blob (the real envelope is built by backend/common/sealed.py); production salts are random.
+const coder = ethers.AbiCoder.defaultAbiCoder();
+export const TERMS_SALT = ethers.id("terms-salt");
+export const BAND_SALT = ethers.id("band-salt");
+export const FINDING_SALT = ethers.id("finding-salt");
+export const ALERT_SALT = ethers.id("alert-salt");
+export const ORG_SECRET = ethers.id("org-secret");
+export const SEALED = ethers.hexlify(ethers.toUtf8Bytes("sealed-envelope"));
+
+export const termsCommitment = (strength: number, tolerance: number, salt = TERMS_SALT) =>
+  ethers.keccak256(coder.encode(["bytes32", "uint8", "uint8"], [salt, strength, tolerance]));
+export const bandCommitment = (band: number, crit: number, salt = BAND_SALT) =>
+  ethers.keccak256(coder.encode(["bytes32", "uint8", "uint8"], [salt, band, crit]));
+export const advisoryKey = (advisoryHash: string, secret = ORG_SECRET) =>
+  ethers.keccak256(coder.encode(["bytes32", "bytes32"], [secret, advisoryHash]));
+export const findingCommitment = (advisoryHash: string, cveHash: string, matched: boolean, salt = FINDING_SALT) =>
+  ethers.keccak256(coder.encode(["bytes32", "bytes32", "bytes32", "bool"], [salt, advisoryHash, cveHash, matched]));
+export const alertCommitment = (severity: number, tti: number, evidence = ethers.id("ev"), salt = ALERT_SALT) =>
+  ethers.keccak256(coder.encode(["bytes32", "uint8", "uint8", "bytes32"], [salt, severity, tti, evidence]));
+export const dedupeKey = (serviceHash: string, severity: number, secret = ORG_SECRET) =>
+  ethers.keccak256(coder.encode(["bytes32", "bytes32", "uint8"], [secret, serviceHash, severity]));
 
 export interface DepArgs {
   consumerOrg: string;
@@ -119,33 +142,43 @@ export interface DepArgs {
   expiry: number;
 }
 
-export async function submitDep(attestation: any, signer: any, a: DepArgs, nonceOverride?: number) {
+export async function submitDep(attestation: any, signer: any, a: DepArgs, nonceOverride?: number, sealed = SEALED) {
   const nonce = nonceOverride ?? Number(await attestation.dependencyNonces(signer.address)) + 1;
-  const value = { ...a, nonce };
+  const tc = termsCommitment(a.strength, a.tolerance);
+  const value = {
+    consumerOrg: a.consumerOrg, consumerServiceHash: a.consumerServiceHash, providerOrg: a.providerOrg,
+    providerServiceHash: a.providerServiceHash, termsCommitment: tc, disclosureHash: ethers.keccak256(sealed), nonce, expiry: a.expiry,
+  };
   const sig = await signer.signTypedData(await attDomain(attestation), DEP_TYPES, value);
   return attestation
     .connect(signer)
     .submitDependencyAttestation(
       a.consumerOrg, a.consumerServiceHash, a.providerOrg, a.providerServiceHash,
-      a.strength, a.tolerance, nonce, a.expiry, sig
+      tc, nonce, a.expiry, sealed, sig
     );
 }
 
 export async function submitRisk(
   attestation: any, signer: any, orgId: string, serviceHash: string, band: number, crit: number,
-  validUntil: number, evidence = ethers.ZeroHash, nonceOverride?: number
+  validUntil: number, evidence = ethers.ZeroHash, nonceOverride?: number, sealed = SEALED
 ) {
   const nonce = nonceOverride ?? Number(await attestation.riskNonces(signer.address)) + 1;
+  const bc = bandCommitment(band, crit);
   const value = {
-    orgId, serviceHash, riskBand: band, criticalityBucket: crit,
+    orgId, serviceHash, bandCommitment: bc, disclosureHash: ethers.keccak256(sealed),
     modelVersionHash: ethers.id("model-v1"), evidenceCommitment: evidence, validUntil, nonce,
   };
   const sig = await signer.signTypedData(await attDomain(attestation), RISK_TYPES, value);
   return attestation
     .connect(signer)
     .submitRiskAttestation(
-      orgId, serviceHash, band, crit, value.modelVersionHash, evidence, validUntil, nonce, sig
+      orgId, serviceHash, bc, value.modelVersionHash, evidence, validUntil, nonce, sealed, sig
     );
+}
+
+/** Latest risk attestation's id, for verifyBandDisclosure. */
+export async function latestRiskId(attestation: any, orgId: string, serviceHash: string) {
+  return attestation.latestRiskId(orgId, serviceHash);
 }
 
 export async function submitFinding(
@@ -153,11 +186,23 @@ export async function submitFinding(
   processedAt: number, matched: boolean, nonceOverride?: number
 ) {
   const nonce = nonceOverride ?? Number(await attestation.findingNonces(signer.address)) + 1;
-  const value = { orgId, advisoryContentHash: advisoryHash, cveSetHash: cveHash, processedAt, matched, nonce };
+  const key = advisoryKey(advisoryHash);
+  const fc = findingCommitment(advisoryHash, cveHash, matched);
+  const value = { orgId, advisoryKey: key, findingCommitment: fc, processedAt, nonce };
   const sig = await signer.signTypedData(await attDomain(attestation), FINDING_TYPES, value);
   return attestation
     .connect(signer)
-    .submitFindingAttestation(orgId, advisoryHash, cveHash, processedAt, matched, nonce, sig);
+    .submitFindingAttestation(orgId, key, fc, processedAt, nonce, sig);
+}
+
+/** Publish an alert with committed (not plaintext) severity/tti. */
+export async function publishAlert(
+  alertBus: any, signer: any, orgId: string, serviceHash: string, severity: number, tti: number, expiry: number,
+  evidence = ethers.id("ev")
+) {
+  return alertBus
+    .connect(signer)
+    .publish(orgId, serviceHash, alertCommitment(severity, tti, evidence), dedupeKey(serviceHash, severity), expiry, SEALED);
 }
 
 export async function futureTs(seconds: number) {

@@ -9,7 +9,7 @@ CascadeShield implements the **D3COY PS-03** specification for cross-organisatio
 - **AI Agent Layer**: 6 specialized agents (Intake, Risk, Cascade, Planner, Critic, Executor) orchestrated via a state machine
 - **Blockchain Layer**: 6 smart contracts (OrgRegistry, AttestationRegistry, AuditLog, ApprovalGate, FirmwareRegistry, AlertBus) on local Hardhat network
 - **Deterministic Operations**: Works fully offline with deterministic LLM provider for reproducible testing
-- **Privacy-Preserving**: Organizations never share private inventory; only on-chain attestations are shared
+- **Privacy-Preserving**: Organizations never share private inventory. The chain holds only commitments; risk bands, dependency terms and alert severity travel as sealed envelopes that only the intended members can open, so the ledger never becomes a target list for attackers
 
 ## Architecture
 
@@ -134,6 +134,7 @@ Decoy/
 ### Security
 - 5-layer prompt injection defense
 - EIP-712 signed attestations with replay protection
+- Confidential on-chain data: salted commitments + X25519/AES-GCM sealed disclosures (see `docs/THREAT_MODEL.md` T-12)
 - Hash-chained audit log with Merkle inclusion proofs
 - Snapshot semantics for approvals (immutable approver sets)
 - Agent cannot approve or execute without on-chain gate

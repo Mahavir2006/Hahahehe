@@ -40,6 +40,8 @@ contract OrgRegistry is AccessControl {
     mapping(bytes32 => Approver[]) public orgApprovers;
     bytes32[] public orgIds;
     mapping(address => bytes32) public addressToOrgId;
+    // X25519 public key per org, used by other members to seal (encrypt) confidential disclosures to it.
+    mapping(bytes32 => bytes32) public encryptionKeys;
 
     // Events
     event OrgRegistered(
@@ -62,6 +64,7 @@ contract OrgRegistry is AccessControl {
         uint8 threshold,
         uint256 timestamp
     );
+    event EncryptionKeySet(bytes32 indexed orgId, bytes32 encryptionKey, uint256 timestamp);
     event OrgDeactivated(bytes32 indexed orgId, uint256 timestamp);
     event OrgReactivated(bytes32 indexed orgId, uint256 timestamp);
 
@@ -78,6 +81,7 @@ contract OrgRegistry is AccessControl {
     error ZeroAddress();
     error InvalidSector();
     error AddressAlreadyBound(address addr);
+    error InvalidEncryptionKey();
 
     constructor() {
         _grantRole(REGISTRY_ADMIN_ROLE, msg.sender);
@@ -266,6 +270,17 @@ contract OrgRegistry is AccessControl {
     // =========================================================================
     // Org Admin Functions (org admin only)
     // =========================================================================
+
+    /// @notice Publish (or rotate) the org's X25519 encryption public key for sealed disclosures.
+    function setEncryptionKey(bytes32 orgId, bytes32 encryptionKey) external {
+        _onlyOrgAdmin(orgId);
+        if (encryptionKey == bytes32(0)) {
+            revert InvalidEncryptionKey();
+        }
+        encryptionKeys[orgId] = encryptionKey;
+        organizations[orgId].updatedAt = block.timestamp;
+        emit EncryptionKeySet(orgId, encryptionKey, block.timestamp);
+    }
 
     function rotateAgentSigner(bytes32 orgId, address newAgentSigner) external {
         _onlyOrgAdmin(orgId);

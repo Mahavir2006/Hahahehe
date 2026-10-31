@@ -8,7 +8,12 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./OrgRegistry.sol";
 
 /// @title AttestationRegistry
-/// @notice Stores three types of attestations: Dependency (bilateral), Risk, and Finding
+/// @notice Stores three types of attestations: Dependency (bilateral), Risk, and Finding.
+/// @dev Confidentiality (SEC-PRIV): nothing that tells a chain reader WHAT is vulnerable is stored in the clear.
+///      Sensitive values (risk band, criticality, dependency strength/tolerance, finding outcome) are bound by
+///      salted commitments; the values themselves travel only as `sealed` ciphertext (encrypted to the
+///      recipients' OrgRegistry encryption keys) carried in event data. The signed EIP-712 struct covers
+///      keccak256(sealed), so a relayer cannot swap the ciphertext.
 contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
     using ECDSA for bytes32;
 
@@ -19,8 +24,6 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
     // Dependency Attestations (BC-ATT-D)
     // =========================================================================
 
-    enum DependencyStrength { Low, Medium, High }
-    enum ToleranceBucket { Under15m, Min15To60, Hours1To4, Over4h }
     enum EdgeState { Proposed, Confirmed, Revoked, Expired, Disputed }
 
     struct DependencyAttestation {
@@ -28,8 +31,8 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
         bytes32 consumerServiceHash;
         bytes32 providerOrg;
         bytes32 providerServiceHash;
-        DependencyStrength strength;
-        ToleranceBucket tolerance;
+        bytes32 termsCommitment;   // keccak256(abi.encode(salt, uint8 strength, uint8 tolerance)); salt agreed in the handshake
+        bytes32 disclosureHash;    // keccak256(sealedTerms)
         uint256 nonce;
         uint256 expiry;
         address signer;
@@ -56,14 +59,11 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
     // Risk Attestations (BC-ATT-R)
     // =========================================================================
 
-    enum RiskBand { Low, Medium, High, Critical }
-    enum CriticalityBucket { Low, Medium, High, LifeCritical }
-
     struct RiskAttestation {
         bytes32 orgId;
         bytes32 serviceHash;
-        RiskBand riskBand;
-        CriticalityBucket criticalityBucket;
+        bytes32 bandCommitment;    // keccak256(abi.encode(salt, uint8 riskBand, uint8 criticalityBucket)), fresh random salt
+        bytes32 disclosureHash;    // keccak256(sealedBand)
         address signer;
         bytes32 modelVersionHash;
         bytes32 evidenceCommitment;
@@ -85,18 +85,20 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
     // Finding Attestations (BC-ATT-F)
     // =========================================================================
 
+    // Nothing about the outcome is public: `advisoryKey` is the advisory hash blinded with an org secret (so a
+    // public advisory cannot be hashed and looked up), and `findingCommitment` hides the CVE set and match result.
+    // The finding is never broadcast; the org can open the commitment to an auditor (verifyFindingDisclosure).
     struct FindingAttestation {
         bytes32 orgId;
-        bytes32 advisoryContentHash;
-        bytes32 cveSetHash;
+        bytes32 advisoryKey;        // keccak256(abi.encode(orgSecret, advisoryContentHash))
+        bytes32 findingCommitment;  // keccak256(abi.encode(salt, advisoryContentHash, cveSetHash, bool matched))
         uint256 processedAt;
-        bool matched;
         uint256 nonce;
         address signer;
         uint256 timestamp;
     }
 
-    // orgId => advisoryContentHash => attestationId
+    // orgId => advisoryKey => attestationId
     mapping(bytes32 => mapping(bytes32 => bytes32)) public findingAttestations;
     // attestationId => FindingAttestation
     mapping(bytes32 => FindingAttestation) public findingAttestationDetails;
@@ -108,13 +110,13 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
 
     // Domain separator for EIP-712
     bytes32 public constant DEPENDENCY_TYPE_HASH = keccak256(
-        "DependencyAttestation(bytes32 consumerOrg,bytes32 consumerServiceHash,bytes32 providerOrg,bytes32 providerServiceHash,uint8 strength,uint8 tolerance,uint256 nonce,uint256 expiry)"
+        "DependencyAttestation(bytes32 consumerOrg,bytes32 consumerServiceHash,bytes32 providerOrg,bytes32 providerServiceHash,bytes32 termsCommitment,bytes32 disclosureHash,uint256 nonce,uint256 expiry)"
     );
     bytes32 public constant RISK_TYPE_HASH = keccak256(
-        "RiskAttestation(bytes32 orgId,bytes32 serviceHash,uint8 riskBand,uint8 criticalityBucket,bytes32 modelVersionHash,bytes32 evidenceCommitment,uint256 validUntil,uint256 nonce)"
+        "RiskAttestation(bytes32 orgId,bytes32 serviceHash,bytes32 bandCommitment,bytes32 disclosureHash,bytes32 modelVersionHash,bytes32 evidenceCommitment,uint256 validUntil,uint256 nonce)"
     );
     bytes32 public constant FINDING_TYPE_HASH = keccak256(
-        "FindingAttestation(bytes32 orgId,bytes32 advisoryContentHash,bytes32 cveSetHash,uint256 processedAt,bool matched,uint256 nonce)"
+        "FindingAttestation(bytes32 orgId,bytes32 advisoryKey,bytes32 findingCommitment,uint256 processedAt,uint256 nonce)"
     );
 
     // Rate limiting for risk attestations (1 block default for tests)
@@ -130,8 +132,8 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
         bytes32 indexed providerOrg,
         bytes32 consumerServiceHash,
         bytes32 providerServiceHash,
-        uint8 strength,
-        uint8 tolerance,
+        bytes32 termsCommitment,
+        bytes sealedTerms,
         address signer,
         uint256 timestamp
     );
@@ -143,8 +145,9 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
     event RiskAttestationSubmitted(
         bytes32 indexed orgId,
         bytes32 indexed serviceHash,
-        RiskBand riskBand,
-        CriticalityBucket criticalityBucket,
+        bytes32 attestationId,
+        bytes32 bandCommitment,
+        bytes sealedBand,
         address indexed signer,
         uint256 timestamp
     );
@@ -152,8 +155,8 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
 
     event FindingAttestationSubmitted(
         bytes32 indexed orgId,
-        bytes32 indexed advisoryContentHash,
-        bool matched,
+        bytes32 indexed advisoryKey,
+        bytes32 findingCommitment,
         address indexed signer,
         uint256 timestamp
     );
@@ -179,10 +182,8 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
     error AttestationMismatch();
     error RateLimited(uint256 nextAllowedTimestamp);
     error DuplicateFindingAttestation();
-    error InvalidRiskBand();
-    error InvalidCriticalityBucket();
-    error InvalidDependencyStrength();
-    error InvalidToleranceBucket();
+    error EmptyCommitment();
+    error EmptyDisclosure();
     error ChallengeNotAllowed();
     error SameOrg();
     error AttestationNotFound(bytes32 attestationId);
@@ -197,21 +198,21 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
         bytes32 consumerServiceHash,
         bytes32 providerOrg,
         bytes32 providerServiceHash,
-        uint8 strength,
-        uint8 tolerance,
+        bytes32 termsCommitment,
         uint256 nonce,
         uint256 expiry,
+        bytes calldata sealedTerms,
         bytes calldata signature
     ) external nonReentrant {
-        // Validate enums
-        if (strength > 2) revert InvalidDependencyStrength();
-        if (tolerance > 3) revert InvalidToleranceBucket();
+        if (termsCommitment == bytes32(0)) revert EmptyCommitment();
+        if (sealedTerms.length == 0) revert EmptyDisclosure();
         if (consumerOrg == providerOrg) revert SameOrg();
 
         // Verify signer is current agent signer for one of the two orgs
+        bytes32 disclosureHash = keccak256(sealedTerms);
         address signer = _verifyDependencySignature(
             consumerOrg, consumerServiceHash, providerOrg, providerServiceHash,
-            strength, tolerance, nonce, expiry, signature
+            termsCommitment, disclosureHash, nonce, expiry, signature
         );
 
         // Both orgs must be active (BC-ORG-06)
@@ -269,8 +270,8 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
             consumerServiceHash: consumerServiceHash,
             providerOrg: providerOrg,
             providerServiceHash: providerServiceHash,
-            strength: DependencyStrength(strength),
-            tolerance: ToleranceBucket(tolerance),
+            termsCommitment: termsCommitment,
+            disclosureHash: disclosureHash,
             nonce: nonce,
             expiry: expiry,
             signer: signer,
@@ -309,7 +310,7 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
             edge.state = EdgeState.Proposed;
         }
 
-        emit DependencyAttestationSubmitted(edgeId, consumerOrg, providerOrg, consumerServiceHash, providerServiceHash, strength, tolerance, signer, block.timestamp);
+        emit DependencyAttestationSubmitted(edgeId, consumerOrg, providerOrg, consumerServiceHash, providerServiceHash, termsCommitment, sealedTerms, signer, block.timestamp);
     }
 
     /// @notice Either party's current agent signer may revoke an edge (BC-ATT-D-04).
@@ -391,21 +392,21 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
     function submitRiskAttestation(
         bytes32 orgId,
         bytes32 serviceHash,
-        uint8 riskBand,
-        uint8 criticalityBucket,
+        bytes32 bandCommitment,
         bytes32 modelVersionHash,
         bytes32 evidenceCommitment,
         uint256 validUntil,
         uint256 nonce,
+        bytes calldata sealedBand,
         bytes calldata signature
     ) external nonReentrant {
-        // Validate enums
-        if (riskBand > 3) revert InvalidRiskBand();
-        if (criticalityBucket > 3) revert InvalidCriticalityBucket();
+        if (bandCommitment == bytes32(0)) revert EmptyCommitment();
+        if (sealedBand.length == 0) revert EmptyDisclosure();
 
         // Verify signer is current agent signer for orgId
+        bytes32 disclosureHash = keccak256(sealedBand);
         address signer = _verifyRiskSignature(
-            orgId, serviceHash, riskBand, criticalityBucket,
+            orgId, serviceHash, bandCommitment, disclosureHash,
             modelVersionHash, evidenceCommitment, validUntil, nonce, signature
         );
 
@@ -434,15 +435,15 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
 
         // Create attestation
         bytes32 attestationId = keccak256(abi.encode(
-            orgId, serviceHash, riskBand, criticalityBucket,
+            orgId, serviceHash, bandCommitment, disclosureHash,
             modelVersionHash, evidenceCommitment, validUntil, nonce, signer, block.timestamp
         ));
 
         RiskAttestation memory attestation = RiskAttestation({
             orgId: orgId,
             serviceHash: serviceHash,
-            riskBand: RiskBand(riskBand),
-            criticalityBucket: CriticalityBucket(criticalityBucket),
+            bandCommitment: bandCommitment,
+            disclosureHash: disclosureHash,
             modelVersionHash: modelVersionHash,
             evidenceCommitment: evidenceCommitment,
             validUntil: validUntil,
@@ -456,7 +457,7 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
         riskAttestationHistory[orgId][serviceHash].push(attestationId);
         lastRiskAttestationTimestamp[orgId][serviceHash] = block.timestamp;
 
-        emit RiskAttestationSubmitted(orgId, serviceHash, RiskBand(riskBand), CriticalityBucket(criticalityBucket), signer, block.timestamp);
+        emit RiskAttestationSubmitted(orgId, serviceHash, attestationId, bandCommitment, sealedBand, signer, block.timestamp);
     }
 
     function getLatestRiskAttestation(bytes32 orgId, bytes32 serviceHash)
@@ -489,6 +490,16 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
         return computedCommitment == attestation.evidenceCommitment;
     }
 
+    /// @notice A recipient (or an auditor the org opens it to) checks a decrypted band against the commitment.
+    function verifyBandDisclosure(bytes32 attestationId, bytes32 salt, uint8 riskBand, uint8 criticalityBucket)
+        external view returns (bool) {
+        RiskAttestation storage attestation = riskAttestations[attestationId];
+        if (attestation.timestamp == 0) {
+            return false;
+        }
+        return keccak256(abi.encode(salt, riskBand, criticalityBucket)) == attestation.bandCommitment;
+    }
+
     function isRiskAttestationValid(bytes32 orgId, bytes32 serviceHash)
         external view returns (bool) {
         RiskAttestation storage attestation = riskAttestations[latestRiskId[orgId][serviceHash]];
@@ -504,16 +515,17 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
 
     function submitFindingAttestation(
         bytes32 orgId,
-        bytes32 advisoryContentHash,
-        bytes32 cveSetHash,
+        bytes32 advisoryKey,
+        bytes32 findingCommitment,
         uint256 processedAt,
-        bool matched,
         uint256 nonce,
         bytes calldata signature
     ) external nonReentrant {
+        if (advisoryKey == bytes32(0) || findingCommitment == bytes32(0)) revert EmptyCommitment();
+
         // Verify signer is current agent signer for orgId
         address signer = _verifyFindingSignature(
-            orgId, advisoryContentHash, cveSetHash, processedAt, matched, nonce, signature
+            orgId, advisoryKey, findingCommitment, processedAt, nonce, signature
         );
 
         // Check org is active
@@ -529,50 +541,65 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
         findingNonces[signer] = nonce;
 
         // Check for duplicate (idempotent)
-        bytes32 existingId = findingAttestations[orgId][advisoryContentHash];
+        bytes32 existingId = findingAttestations[orgId][advisoryKey];
         if (existingId != bytes32(0)) {
             // Return existing - idempotent
-            emit FindingAttestationSubmitted(orgId, advisoryContentHash, matched, signer, block.timestamp);
+            emit FindingAttestationSubmitted(orgId, advisoryKey, findingAttestationDetails[existingId].findingCommitment, signer, block.timestamp);
             return;
         }
 
         bytes32 attestationId = keccak256(abi.encode(
-            orgId, advisoryContentHash, cveSetHash, processedAt, matched, nonce, signer, block.timestamp
+            orgId, advisoryKey, findingCommitment, processedAt, nonce, signer, block.timestamp
         ));
 
         FindingAttestation memory attestation = FindingAttestation({
             orgId: orgId,
-            advisoryContentHash: advisoryContentHash,
-            cveSetHash: cveSetHash,
+            advisoryKey: advisoryKey,
+            findingCommitment: findingCommitment,
             processedAt: processedAt,
-            matched: matched,
             nonce: nonce,
             signer: signer,
             timestamp: block.timestamp
         });
 
-        findingAttestations[orgId][advisoryContentHash] = attestationId;
+        findingAttestations[orgId][advisoryKey] = attestationId;
         findingAttestationDetails[attestationId] = attestation;
 
-        emit FindingAttestationSubmitted(orgId, advisoryContentHash, matched, signer, block.timestamp);
+        emit FindingAttestationSubmitted(orgId, advisoryKey, findingCommitment, signer, block.timestamp);
     }
 
-    function getFindingAttestation(bytes32 orgId, bytes32 advisoryContentHash)
+    function getFindingAttestation(bytes32 orgId, bytes32 advisoryKey)
         external view returns (FindingAttestation memory) {
-        bytes32 attestationId = findingAttestations[orgId][advisoryContentHash];
+        bytes32 attestationId = findingAttestations[orgId][advisoryKey];
         if (attestationId == bytes32(0)) {
             return FindingAttestation({
                 orgId: bytes32(0),
-                advisoryContentHash: bytes32(0),
-                cveSetHash: bytes32(0),
+                advisoryKey: bytes32(0),
+                findingCommitment: bytes32(0),
                 processedAt: 0,
-                matched: false,
                 nonce: 0,
                 signer: address(0),
                 timestamp: 0
             });
         }
         return findingAttestationDetails[attestationId];
+    }
+
+    /// @notice Selective disclosure: the org opens one finding to an auditor/regulator without publishing it.
+    function verifyFindingDisclosure(
+        bytes32 orgId,
+        bytes32 advisoryKey,
+        bytes32 salt,
+        bytes32 advisoryContentHash,
+        bytes32 cveSetHash,
+        bool matched
+    ) external view returns (bool) {
+        bytes32 attestationId = findingAttestations[orgId][advisoryKey];
+        if (attestationId == bytes32(0)) {
+            return false;
+        }
+        return keccak256(abi.encode(salt, advisoryContentHash, cveSetHash, matched))
+            == findingAttestationDetails[attestationId].findingCommitment;
     }
 
     // =========================================================================
@@ -636,139 +663,85 @@ contract AttestationRegistry is AccessControl, EIP712, ReentrancyGuard {
         bytes32 consumerServiceHash,
         bytes32 providerOrg,
         bytes32 providerServiceHash,
-        uint8 strength,
-        uint8 tolerance,
+        bytes32 termsCommitment,
+        bytes32 disclosureHash,
         uint256 nonce,
         uint256 expiry,
         bytes calldata signature
     ) internal view returns (address) {
-        bytes32 digest = _hashDependencyAttestation(
+        bytes32 structHash = keccak256(abi.encode(
+            DEPENDENCY_TYPE_HASH,
             consumerOrg, consumerServiceHash, providerOrg, providerServiceHash,
-            strength, tolerance, nonce, expiry
-        );
-        address signer = ECDSA.recover(digest, signature);
-        
+            termsCommitment, disclosureHash, nonce, expiry
+        ));
+        address signer = ECDSA.recover(_hashTypedDataV4(structHash), signature);
+
         // Verify signer is one of the two orgs' current agent signers
         address consumerSigner = orgRegistry.getOrg(consumerOrg).agentSigner;
         address providerSigner = orgRegistry.getOrg(providerOrg).agentSigner;
-        
+
         if (signer != consumerSigner && signer != providerSigner) {
             revert InvalidSigner(consumerOrg);
         }
-        
-        // Verify signer matches the org they claim to represent
-        // (This is enforced by the caller knowing which org they are)
         return signer;
     }
 
     function _verifyRiskSignature(
         bytes32 orgId,
         bytes32 serviceHash,
-        uint8 riskBand,
-        uint8 criticalityBucket,
+        bytes32 bandCommitment,
+        bytes32 disclosureHash,
         bytes32 modelVersionHash,
         bytes32 evidenceCommitment,
         uint256 validUntil,
         uint256 nonce,
         bytes calldata signature
     ) internal view returns (address) {
-        bytes32 digest = _hashRiskAttestation(
-            orgId, serviceHash, riskBand, criticalityBucket,
+        bytes32 structHash = keccak256(abi.encode(
+            RISK_TYPE_HASH,
+            orgId, serviceHash, bandCommitment, disclosureHash,
             modelVersionHash, evidenceCommitment, validUntil, nonce
-        );
-        address signer = ECDSA.recover(digest, signature);
-        
+        ));
+        address signer = ECDSA.recover(_hashTypedDataV4(structHash), signature);
+
         address expectedSigner = orgRegistry.getOrg(orgId).agentSigner;
         if (signer != expectedSigner) {
             revert InvalidSigner(orgId);
         }
-        
         return signer;
     }
 
     function _verifyFindingSignature(
         bytes32 orgId,
-        bytes32 advisoryContentHash,
-        bytes32 cveSetHash,
+        bytes32 advisoryKey,
+        bytes32 findingCommitment,
         uint256 processedAt,
-        bool matched,
         uint256 nonce,
         bytes calldata signature
     ) internal view returns (address) {
-        bytes32 digest = _hashFindingAttestation(
-            orgId, advisoryContentHash, cveSetHash, processedAt, matched, nonce
-        );
-        address signer = ECDSA.recover(digest, signature);
-        
+        bytes32 structHash = keccak256(abi.encode(
+            FINDING_TYPE_HASH,
+            orgId, advisoryKey, findingCommitment, processedAt, nonce
+        ));
+        address signer = ECDSA.recover(_hashTypedDataV4(structHash), signature);
+
         address expectedSigner = orgRegistry.getOrg(orgId).agentSigner;
         if (signer != expectedSigner) {
             revert InvalidSigner(orgId);
         }
-        
         return signer;
-    }
-
-    function _hashDependencyAttestation(
-        bytes32 consumerOrg,
-        bytes32 consumerServiceHash,
-        bytes32 providerOrg,
-        bytes32 providerServiceHash,
-        uint8 strength,
-        uint8 tolerance,
-        uint256 nonce,
-        uint256 expiry
-    ) internal view returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(
-            DEPENDENCY_TYPE_HASH,
-            consumerOrg, consumerServiceHash, providerOrg, providerServiceHash,
-            strength, tolerance, nonce, expiry
-        ));
-        return _hashTypedDataV4(structHash);
-    }
-
-    function _hashRiskAttestation(
-        bytes32 orgId,
-        bytes32 serviceHash,
-        uint8 riskBand,
-        uint8 criticalityBucket,
-        bytes32 modelVersionHash,
-        bytes32 evidenceCommitment,
-        uint256 validUntil,
-        uint256 nonce
-    ) internal view returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(
-            RISK_TYPE_HASH,
-            orgId, serviceHash, riskBand, criticalityBucket,
-            modelVersionHash, evidenceCommitment, validUntil, nonce
-        ));
-        return _hashTypedDataV4(structHash);
-    }
-
-    function _hashFindingAttestation(
-        bytes32 orgId,
-        bytes32 advisoryContentHash,
-        bytes32 cveSetHash,
-        uint256 processedAt,
-        bool matched,
-        uint256 nonce
-    ) internal view returns (bytes32) {
-        bytes32 structHash = keccak256(abi.encode(
-            FINDING_TYPE_HASH,
-            orgId, advisoryContentHash, cveSetHash, processedAt, matched, nonce
-        ));
-        return _hashTypedDataV4(structHash);
     }
 
     function _attestationsMatch(
         DependencyAttestation memory a,
         DependencyAttestation memory b
     ) internal pure returns (bool) {
+        // Both sides must have signed the SAME terms commitment (same salt, strength and tolerance).
         return a.consumerOrg == b.consumerOrg &&
                a.consumerServiceHash == b.consumerServiceHash &&
                a.providerOrg == b.providerOrg &&
                a.providerServiceHash == b.providerServiceHash &&
-               a.strength == b.strength &&
-               a.tolerance == b.tolerance;
+               a.termsCommitment == b.termsCommitment;
     }
 
     constructor(address orgRegistryAddress) EIP712("AttestationRegistry", "1") {
