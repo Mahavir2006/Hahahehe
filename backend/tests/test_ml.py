@@ -146,8 +146,11 @@ def test_no_asset_in_both_train_and_test_and_time_split_is_ordered():
 
 @pytest.mark.req("RISK-01")
 def test_training_code_never_imports_the_label_process():
-    for p in (ROOT / "backend" / "risk").glob("*.py"):
-        assert "label_process" not in p.read_text(encoding="utf-8"), p.name
+    import re
+
+    pat = re.compile(r"^\s*(from\s+\S*\s+import\s+.*\blabel_process\b|import\s+\S*label_process\b|from\s+\S*label_process\b)", re.M)
+    for p in list((ROOT / "backend").rglob("*.py")) + list((ROOT / "evaluation").glob("*.py")):
+        assert not pat.search(p.read_text(encoding="utf-8")), p
 
 
 @pytest.mark.req("RISK-01")

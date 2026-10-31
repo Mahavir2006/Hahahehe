@@ -102,7 +102,12 @@ def check_solidity_coverage():
         return False, {"lines": 0, "branches": 0, "passed": False, "error": str(e)}
 
 def check_ml_metrics():
-    return True, {"auc": 0.85, "passed": True}
+    """RISK-05: read the measured M1 ROC-AUC on held-out generator A from metrics.json (make evaluate). Never hard-coded."""
+    p = Path(__file__).resolve().parents[1] / "backend" / "risk" / "artifacts" / "metrics.json"
+    if not p.exists():
+        return False, {"auc": None, "passed": False, "error": "metrics.json missing; run make evaluate"}
+    auc = json.loads(p.read_text(encoding="utf-8"))["evaluations"]["A_grouped"]["M1"]["roc_auc"]
+    return auc >= 0.80, {"auc": auc, "passed": auc >= 0.80, "source": "backend/risk/artifacts/metrics.json"}
 
 def check_extraction_accuracy():
     return True, {"accuracy": 0.92, "passed": True}

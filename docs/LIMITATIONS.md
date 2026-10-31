@@ -10,7 +10,9 @@
 
 5. **Dev keys are insecure by design.** Private keys in `data/orgs/*/private_keys.dev.json` are generated for local testing only and are git-ignored.
 
-6. **ML model trained on synthetic data.** The risk model (RISK-01) trains on `historical_incidents.csv`, which is synthetically generated. AUC ≥ 0.80 is achievable on the synthetic split but does not imply real-world performance.
+6. **ML model trained on synthetic labels.** M1 trains on `data/ml/gen_a.csv`: simulated assets with real, time-matched CVE context (CISA CSAF, KEV) and labels from a synthetic process with hidden factors (`data/label_process.py`). On held-out generator A it reaches ROC-AUC 0.7347, below the spec target of 0.80, and does not beat logistic regression; on generator B it reaches 0.6651. These numbers measure agreement with the simulation, not real-world skill. Details in `docs/ML_REPORT.md`.
+
+7a. **Hand-set constants are assumptions.** The cascade weights (`EDGE_WEIGHT`, `SERVICE_WEIGHT`, `BAND_P`, `STRENGTH_W`), the impact weights (0.45 / 0.20 / 0.15 / 0.20), the monitoring (x0.85) and isolation (x0.3) multipliers, the band thresholds and the 2.0-point band hysteresis are chosen, not learned. A +-20% sensitivity check keeps top-10 rankings largely stable (Kendall tau 0.82-1.0, see `docs/ML_REPORT.md`).
 
 7. **Dashboard on-chain verification is partial.** DASH-10 requires direct ethers.js reads for Audit Verification and Attestations views; other views may read via the backend API.
 
