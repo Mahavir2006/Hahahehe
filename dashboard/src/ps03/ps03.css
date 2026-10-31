@@ -38,3 +38,5 @@
 .ps03-view .hash { font-size: 0.72rem; word-break: break-all; }
 .ps03-view .live-dot { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #2e7d32; margin: 0 0.3rem; animation: pulse 1.2s infinite; }
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.25; } 100% { opacity: 1; } }
+/* Team dashboard tab: the teammate's page is designed for its own dark page colours (App.css :root) */
+.ps03 .team-view { background: var(--bg); color: var(--text); margin: -1rem -1.5rem; padding: 0.5rem 0; min-height: calc(100vh - 8rem); }
