@@ -1,10 +1,11 @@
 import { api } from './api'
 import { ErrorBox, useLoad } from './common'
+import LiveChain from './LiveChain'
 
 export default function Trust({ org }: { org: string }) {
-  const [chain, e1] = useLoad(() => api<any>('/api/chain/status'), [])
+  const [chain, e1] = useLoad(() => api<any>('/api/chain/status'), [], 3000)
   const [audit, e2] = useLoad(() => api<any>(`/api/audit/verify?org=${org}`), [org])
-  const [att, e3] = useLoad(() => api<any>('/api/chain/attestations'), [])
+  const [att, e3] = useLoad(() => api<any>('/api/chain/attestations'), [], 5000)
   const [model] = useLoad(() => api<any>('/api/ps03/model/info'), [])
   return (
     <div>
@@ -23,6 +24,7 @@ export default function Trust({ org }: { org: string }) {
           </p>
         )}
       </section>
+      <LiveChain limit={30} />
       <section className="panel">
         <h3>Audit verify ({org})</h3>
         <pre className="pre">{audit ? JSON.stringify(audit, null, 1) : '...'}</pre>

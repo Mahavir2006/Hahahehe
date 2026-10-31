@@ -81,8 +81,9 @@ class Reassessor:
         m = M1.get()
         assets = {}
         for aid, a in n.assets.items():
-            if det.last_day is not None:  # once the simulated clock runs, telemetry features come from the PS-03 detector
-                a.telemetry.update({k: int(v) for k, v in det.aggregate(aid, day).items()})
+            # in PS-03 mode the telemetry features always come from the PS-03 detector (from day 0), so a score change
+            # is never caused by switching between telemetry sources
+            a.telemetry.update({k: int(v) for k, v in det.aggregate(aid, day).items()})
             s = X.score_asset_v2(a, m)
             assets[aid] = {"likelihood_bp": s["likelihood_bp"], "impact_bp": s["impact_bp"], "risk_bp": s["risk_bp"], "band": s["band_bp"],
                            "features": s["features"], "shap": s["factors_shap"]["all"], "likelihood_mult": a.likelihood_mult,

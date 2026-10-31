@@ -56,7 +56,7 @@ export function DetectionsView({ d }: { d: { note: string; exposure: any[]; acti
 }
 
 export default function Detections({ org }: { org: string }) {
-  const [d, err] = useLoad(() => api(`/api/ps03/detections?org=${org}`), [org])
+  const [d, err] = useLoad(() => api(`/api/ps03/detections?org=${org}`), [org], 5000)
   return (
     <div>
       <ErrorBox error={err} />

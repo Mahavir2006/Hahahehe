@@ -243,6 +243,25 @@ def register(app: FastAPI, S: Callable[[], Any], role: Callable, need_org: Calla
         ]
         return out
 
+    @app.get("/api/ps03/chain/live")
+    def chain_live(limit: int = Query(25, ge=1, le=200)):
+        """Real on-chain activity from the local chain: latest block and the most recent events (tx hash, block,
+        contract, event, org). Nothing here is generated; it is read from the chain through the event indexer."""
+        from backend.common.chain import ORGS as _ORGS, org_id as _org_id
+
+        s = S()
+        s.indexer.sync()
+        names = {"0x" + bytes(_org_id(o)).hex(): o for o in _ORGS}
+        evs = []
+        for e in s.indexer.query(None, None, limit):
+            a = e.get("args") or {}
+            org = next((names.get(str(a.get(k)).lower()) for k in ("orgId", "consumerOrg", "providerOrg", "org") if a.get(k) is not None and names.get(str(a.get(k)).lower())), None)
+            evs.append({"block": e["block"], "tx": e["tx"], "contract": e["contract"], "event": e["name"], "org": org})
+        R = P.r
+        return {"block": s.chain.block_number(), "chain_id": s.chain.chain_id, "events_indexed": s.indexer.count(), "events": evs,
+                "sim_day": simclock.now_day(), "auto_advance_seconds": getattr(app.state, "ps03_live_interval", None),
+                "reassessments": None if R is None else sum(len(n.risk_log) for n in S().nodes.values())}
+
     # ---------------------------------------------------------------- simulation controls (admin)
     @app.post("/api/ps03/sim/advance")
     def advance(req: AdvanceReq, r: str = Depends(role)):

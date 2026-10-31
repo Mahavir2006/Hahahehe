@@ -27,7 +27,8 @@ export function Tag({ text }: { text: string }) {
   return <span className="tag">{text}</span>
 }
 
-export function useLoad<T>(load: () => Promise<T>, deps: React.DependencyList): [T | null, string | null, () => void] {
+// refreshMs: poll again every refreshMs milliseconds (live views); omitted = load once per deps change
+export function useLoad<T>(load: () => Promise<T>, deps: React.DependencyList, refreshMs?: number): [T | null, string | null, () => void] {
   const [data, setData] = React.useState<T | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [tick, setTick] = React.useState(0)
@@ -42,5 +43,10 @@ export function useLoad<T>(load: () => Promise<T>, deps: React.DependencyList): 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick])
+  React.useEffect(() => {
+    if (!refreshMs) return
+    const id = setInterval(() => setTick((t) => t + 1), refreshMs)
+    return () => clearInterval(id)
+  }, [refreshMs])
   return [data, error, () => setTick((t) => t + 1)]
 }

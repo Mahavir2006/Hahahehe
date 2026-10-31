@@ -2,6 +2,7 @@ import React from 'react'
 import cytoscape from 'cytoscape'
 import { api, post, Attention, Change, TREND_ARROW } from './api'
 import { Band, ErrorBox, Tag, useLoad } from './common'
+import LiveChain from './LiveChain'
 
 const BAND_COLOUR: Record<string, string> = { low: '#2e7d32', medium: '#f9a825', high: '#ef6c00', critical: '#c62828' }
 
@@ -97,8 +98,8 @@ export default function Overview({ org, onSelect }: { org: string; onSelect: (id
   const [busy, setBusy] = React.useState(false)
   const [msg, setMsg] = React.useState<string | null>(null)
   const [actionError, setActionError] = React.useState<string | null>(null)
-  const [att, err] = useLoad(() => api<Attention>(`/api/ps03/orgs/${org}/attention?limit=25`), [org, refresh])
-  const [changes] = useLoad(() => api<{ items: Change[] }>(`/api/ps03/orgs/${org}/changes?since_day=-1`), [org, refresh])
+  const [att, err] = useLoad(() => api<Attention>(`/api/ps03/orgs/${org}/attention?limit=25`), [org, refresh], 4000)
+  const [changes] = useLoad(() => api<{ items: Change[] }>(`/api/ps03/orgs/${org}/changes?since_day=-1`), [org, refresh], 4000)
 
   const run = async (fn: () => Promise<any>, label: string) => {
     setBusy(true)
@@ -141,11 +142,12 @@ export default function Overview({ org, onSelect }: { org: string; onSelect: (id
             </section>
             <section className="panel">
               <h3>Asset graph (colour and label = band)</h3>
-              <AssetGraph org={org} refresh={refresh} />
+              <AssetGraph org={org} refresh={refresh * 1000 + (att?.sim_day ?? 0)} />
             </section>
           </div>
         </>
       )}
+      <LiveChain limit={12} />
       <section className="panel">
         <h3>What changed</h3>
         <ChangesList items={(changes?.items || []).slice().reverse().slice(0, 40)} />
