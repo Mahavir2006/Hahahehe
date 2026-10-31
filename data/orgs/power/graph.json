@@ -1,0 +1,88 @@
+{
+  "power-asset-001": [
+    "power-asset-021"
+  ],
+  "power-asset-002": [
+    "power-asset-014",
+    "power-asset-019"
+  ],
+  "power-asset-003": [],
+  "power-asset-004": [
+    "power-asset-011",
+    "power-asset-008"
+  ],
+  "power-asset-005": [
+    "power-asset-020",
+    "power-asset-021",
+    "power-asset-022",
+    "power-asset-022"
+  ],
+  "power-asset-006": [
+    "power-asset-016",
+    "power-asset-023"
+  ],
+  "power-asset-007": [
+    "power-asset-018"
+  ],
+  "power-asset-008": [
+    "power-asset-025",
+    "power-asset-006",
+    "power-asset-023"
+  ],
+  "power-asset-009": [],
+  "power-asset-010": [
+    "power-asset-018",
+    "power-asset-023"
+  ],
+  "power-asset-011": [
+    "power-asset-003",
+    "power-asset-008"
+  ],
+  "power-asset-012": [
+    "power-asset-008",
+    "power-asset-007"
+  ],
+  "power-asset-013": [
+    "power-asset-001"
+  ],
+  "power-asset-014": [],
+  "power-asset-015": [
+    "power-asset-017",
+    "power-asset-005"
+  ],
+  "power-asset-016": [],
+  "power-asset-017": [
+    "power-asset-014",
+    "power-asset-022",
+    "power-asset-020",
+    "power-asset-018"
+  ],
+  "power-asset-018": [
+    "power-asset-024",
+    "power-asset-020"
+  ],
+  "power-asset-019": [
+    "power-asset-016",
+    "power-asset-013",
+    "power-asset-008"
+  ],
+  "power-asset-020": [
+    "power-asset-022",
+    "power-asset-017"
+  ],
+  "power-asset-021": [],
+  "power-asset-022": [
+    "power-asset-015"
+  ],
+  "power-asset-023": [
+    "power-asset-008",
+    "power-asset-006",
+    "power-asset-024"
+  ],
+  "power-asset-024": [
+    "power-asset-002",
+    "power-asset-018",
+    "power-asset-008"
+  ],
+  "power-asset-025": []
+}

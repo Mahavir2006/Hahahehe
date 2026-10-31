@@ -1,0 +1,92 @@
+{
+  "water-asset-001": [
+    "water-asset-017"
+  ],
+  "water-asset-002": [],
+  "water-asset-003": [
+    "water-asset-018",
+    "water-asset-020"
+  ],
+  "water-asset-004": [
+    "water-asset-005",
+    "water-asset-016"
+  ],
+  "water-asset-005": [],
+  "water-asset-006": [
+    "water-asset-001",
+    "water-asset-025",
+    "water-asset-005"
+  ],
+  "water-asset-007": [
+    "water-asset-022",
+    "water-asset-005",
+    "water-asset-003"
+  ],
+  "water-asset-008": [
+    "water-asset-010",
+    "water-asset-012",
+    "water-asset-021",
+    "water-asset-020"
+  ],
+  "water-asset-009": [
+    "water-asset-022",
+    "water-asset-003",
+    "water-asset-012"
+  ],
+  "water-asset-010": [
+    "water-asset-012",
+    "water-asset-022",
+    "water-asset-024"
+  ],
+  "water-asset-011": [
+    "water-asset-019",
+    "water-asset-002",
+    "water-asset-021"
+  ],
+  "water-asset-012": [],
+  "water-asset-013": [
+    "water-asset-022",
+    "water-asset-003"
+  ],
+  "water-asset-014": [
+    "water-asset-008",
+    "water-asset-025"
+  ],
+  "water-asset-015": [],
+  "water-asset-016": [
+    "water-asset-004",
+    "water-asset-022",
+    "water-asset-024"
+  ],
+  "water-asset-017": [],
+  "water-asset-018": [
+    "water-asset-006",
+    "water-asset-024",
+    "water-asset-010"
+  ],
+  "water-asset-019": [],
+  "water-asset-020": [
+    "water-asset-013",
+    "water-asset-022"
+  ],
+  "water-asset-021": [
+    "water-asset-002",
+    "water-asset-010"
+  ],
+  "water-asset-022": [
+    "water-asset-012",
+    "water-asset-014",
+    "water-asset-008"
+  ],
+  "water-asset-023": [
+    "water-asset-008"
+  ],
+  "water-asset-024": [
+    "water-asset-019",
+    "water-asset-022",
+    "water-asset-006"
+  ],
+  "water-asset-025": [
+    "water-asset-006"
+  ]
+}

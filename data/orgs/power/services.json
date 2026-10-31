@@ -1,0 +1,38 @@
+[
+  {
+    "service_id": "power-service-1",
+    "org": "power",
+    "name": "Substation-7 Power Delivery",
+    "required_assets": [
+      "power-asset-001",
+      "power-asset-025",
+      "power-asset-015",
+      "power-asset-020",
+      "power-asset-024"
+    ],
+    "criticality": "high"
+  },
+  {
+    "service_id": "power-service-2",
+    "org": "power",
+    "name": "Transmission Line Monitoring",
+    "required_assets": [
+      "power-asset-017",
+      "power-asset-014",
+      "power-asset-018",
+      "power-asset-015"
+    ],
+    "criticality": "medium"
+  },
+  {
+    "service_id": "power-service-3",
+    "org": "power",
+    "name": "Grid Frequency Regulation",
+    "required_assets": [
+      "power-asset-006",
+      "power-asset-024",
+      "power-asset-016"
+    ],
+    "criticality": "life_critical"
+  }
+]

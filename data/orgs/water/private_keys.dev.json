@@ -1,0 +1,29 @@
+{
+  "admin": {
+    "private_key": "0xd2c3aa5b84626e52dcdb3bfa2176fc7d7eccc2a0fb9bd38703e53daef52a20e6",
+    "public_key": "0x6b3e2237c049997b02ec49f286cb8e56e2e520c3af0b972c52737d726c4e23c301c62ca18061e1ed2c229c2c015c7133d847e43a1ca177fc99cf8ba0b14cce6a",
+    "address": "0xF04BfAD9694b69F947734E4273B227278b78015B"
+  },
+  "agent_signer": {
+    "private_key": "0xdb6663201532e2ffee6e79b17e1988f93d056572a963dad843950eba089411f9",
+    "public_key": "0x5719b01a59bbbee9c243a7aa8acb3aae7cccd8da6c4406bdaf765446ac4a6da86e7986a572d021b08521097016231ce78371639972ac419747df8e5d0a3ba89d",
+    "address": "0x5F89CcecC0aB84861255b1a91F3C7Cc74A272BDe"
+  },
+  "approvers": [
+    {
+      "private_key": "0x6d5697c1746bd97f181fbaace3c6b98a059c0becee9989d9c2849d2041fde966",
+      "public_key": "0x0aff210c1a0d84f7fb13005e8bf31ec4f8097b2fbb7feb3d47ee164edd16ae8cc7da95ca27da0af95d82f3209119f6112a49fed0d636d81e1f8bf97d14143ff2",
+      "address": "0x8F4A4e5A8F20C59d8a85eB0f0D0be725C05cF2FC"
+    },
+    {
+      "private_key": "0x135dca7812479b06bfc362bc7f054b81ba3e9ff7fef3da4872ebc13948cacc54",
+      "public_key": "0x86df65ab5be9ca082fc4faae1b70b5920043bb6a4ec91e8cbe6076045d538b2502982b2042d3ab84b43e01534fd5ac16a92673eb20e36c428c8521923a12b7ed",
+      "address": "0x4234dae97FcC638D851C5E3ddd1BCed4de3Bf28a"
+    },
+    {
+      "private_key": "0x2b698152134695481afbfedb006323bbc8674d8d9e2135313d1bf304a800ff4b",
+      "public_key": "0xb4066abcba9a07c04c6df43e296733577c9befdea1044751195a440bb098e6d4dcaad3184913aa30d88d942e21737d15d15813bd9f318151da85ded81fdc1047",
+      "address": "0x537FF362E1438518A977F6b2C05e7a17A3d46CB6"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "service_id": "hospital-service-1",
+    "org": "hospital",
+    "name": "ICU Life Support",
+    "required_assets": [
+      "hospital-asset-001",
+      "hospital-asset-003",
+      "hospital-asset-010",
+      "hospital-asset-004"
+    ],
+    "criticality": "life_critical"
+  },
+  {
+    "service_id": "hospital-service-2",
+    "org": "hospital",
+    "name": "Patient Records Access",
+    "required_assets": [
+      "hospital-asset-017",
+      "hospital-asset-025",
+      "hospital-asset-018",
+      "hospital-asset-024",
+      "hospital-asset-002"
+    ],
+    "criticality": "high"
+  },
+  {
+    "service_id": "hospital-service-3",
+    "org": "hospital",
+    "name": "Building Environmental Control",
+    "required_assets": [
+      "hospital-asset-022",
+      "hospital-asset-011",
+      "hospital-asset-025"
+    ],
+    "criticality": "medium"
+  }
+]

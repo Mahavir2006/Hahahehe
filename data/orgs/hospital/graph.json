@@ -1,0 +1,93 @@
+{
+  "hospital-asset-001": [
+    "hospital-asset-012"
+  ],
+  "hospital-asset-002": [
+    "hospital-asset-018",
+    "hospital-asset-006",
+    "hospital-asset-003"
+  ],
+  "hospital-asset-003": [
+    "hospital-asset-005",
+    "hospital-asset-012",
+    "hospital-asset-024"
+  ],
+  "hospital-asset-004": [],
+  "hospital-asset-005": [
+    "hospital-asset-002"
+  ],
+  "hospital-asset-006": [
+    "hospital-asset-024"
+  ],
+  "hospital-asset-007": [
+    "hospital-asset-016",
+    "hospital-asset-018",
+    "hospital-asset-021",
+    "hospital-asset-011",
+    "hospital-asset-008"
+  ],
+  "hospital-asset-008": [
+    "hospital-asset-013",
+    "hospital-asset-016"
+  ],
+  "hospital-asset-009": [
+    "hospital-asset-011",
+    "hospital-asset-014"
+  ],
+  "hospital-asset-010": [
+    "hospital-asset-012",
+    "hospital-asset-023",
+    "hospital-asset-021"
+  ],
+  "hospital-asset-011": [
+    "hospital-asset-025"
+  ],
+  "hospital-asset-012": [
+    "hospital-asset-003",
+    "hospital-asset-011"
+  ],
+  "hospital-asset-013": [],
+  "hospital-asset-014": [
+    "hospital-asset-010",
+    "hospital-asset-009",
+    "hospital-asset-025"
+  ],
+  "hospital-asset-015": [
+    "hospital-asset-011"
+  ],
+  "hospital-asset-016": [
+    "hospital-asset-007"
+  ],
+  "hospital-asset-017": [
+    "hospital-asset-012"
+  ],
+  "hospital-asset-018": [
+    "hospital-asset-022",
+    "hospital-asset-024"
+  ],
+  "hospital-asset-019": [
+    "hospital-asset-005",
+    "hospital-asset-021",
+    "hospital-asset-024"
+  ],
+  "hospital-asset-020": [],
+  "hospital-asset-021": [
+    "hospital-asset-018",
+    "hospital-asset-013"
+  ],
+  "hospital-asset-022": [
+    "hospital-asset-005",
+    "hospital-asset-023"
+  ],
+  "hospital-asset-023": [],
+  "hospital-asset-024": [
+    "hospital-asset-017",
+    "hospital-asset-012",
+    "hospital-asset-001"
+  ],
+  "hospital-asset-025": [
+    "hospital-asset-010",
+    "hospital-asset-006",
+    "hospital-asset-007"
+  ]
+}

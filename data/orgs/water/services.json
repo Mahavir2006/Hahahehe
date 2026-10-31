@@ -1,0 +1,38 @@
+[
+  {
+    "service_id": "water-service-1",
+    "org": "water",
+    "name": "Treatment Plant Pumping",
+    "required_assets": [
+      "water-asset-001",
+      "water-asset-019",
+      "water-asset-005",
+      "water-asset-008",
+      "water-asset-015"
+    ],
+    "criticality": "high"
+  },
+  {
+    "service_id": "water-service-2",
+    "org": "water",
+    "name": "Water Quality Monitoring",
+    "required_assets": [
+      "water-asset-021",
+      "water-asset-009",
+      "water-asset-015",
+      "water-asset-022"
+    ],
+    "criticality": "medium"
+  },
+  {
+    "service_id": "water-service-3",
+    "org": "water",
+    "name": "Distribution Pressure Control",
+    "required_assets": [
+      "water-asset-001",
+      "water-asset-015",
+      "water-asset-010"
+    ],
+    "criticality": "high"
+  }
+]
