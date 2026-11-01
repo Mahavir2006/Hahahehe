@@ -421,6 +421,7 @@ def create_app(system: Optional[CascadeShieldSystem] = None) -> FastAPI:
 
     from backend.api.ps03 import register; register(app, S, role, need_org, need_admin)  # noqa: E702  PS-03 (no-op unless PS03_ENABLE=1)
     from backend.api.twin import register as register_twin; register_twin(app, S, role, need_org, need_admin)  # noqa: E702  digital twin
+    from backend.api.attack import register as register_attack; register_attack(app, S, role, need_org, need_admin)  # noqa: E702  firmware attack demo
     return app
 
 

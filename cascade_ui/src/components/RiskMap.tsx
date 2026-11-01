@@ -96,6 +96,7 @@ export const RiskMap = memo(function RiskMap({
   selected,
   onSelect,
   sector = "All",
+  only,
   minLevel = "All",
   legend = true,
   live = true,
@@ -109,6 +110,8 @@ export const RiskMap = memo(function RiskMap({
   selected: string | null
   onSelect: (id: string | null) => void
   sector?: string
+  /** Show only these assets (everything else is faded out), e.g. one attack path. */
+  only?: Set<string>
   minLevel?: string
   compact?: boolean
   legend?: boolean
@@ -161,7 +164,7 @@ export const RiskMap = memo(function RiskMap({
   const focus = cascadeShown ? selected : hover ?? selected
   const downstream = useMemo(() => cascadeShown ?? (focus ? downstreamOf(focus) : new Set<string>()), [focus, cascadeShown])
   const order = ["Low", "Medium", "High", "Critical"]
-  const visible = (a: Asset) => (sector === "All" || a.org === sector) && (minLevel === "All" || order.indexOf(a.level) >= order.indexOf(minLevel))
+  const visible = (a: Asset) => (!only || only.has(a.id)) && (sector === "All" || a.org === sector) && (minLevel === "All" || order.indexOf(a.level) >= order.indexOf(minLevel))
 
   /* ----- zoom & pan, limited to India ----- */
   const clampView = useCallback((k: number, cx: number, cy: number) => {

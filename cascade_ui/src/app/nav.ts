@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react"
-import { Activity, BarChart3, Boxes, Fingerprint, FileSearch, LayoutDashboard, Network, Radar, ScrollText, SearchX, Siren, Workflow, Wrench, type LucideIcon } from "lucide-react"
+import { Activity, BarChart3, Boxes, Bug, Fingerprint, FileSearch, LayoutDashboard, Network, Radar, ScrollText, SearchX, Siren, Workflow, Wrench, type LucideIcon } from "lucide-react"
 
-export type PageId = "dashboard" | "assets" | "risk" | "cascade" | "proactive" | "actions" | "respond" | "audit" | "simulate" | "trust" | "twin"
+export type PageId = "dashboard" | "assets" | "risk" | "cascade" | "proactive" | "actions" | "respond" | "audit" | "simulate" | "trust" | "twin" | "attack"
 /** Routes that exist but are not in the menu. */
 export type RouteId = PageId | "asset" | "notfound"
 
@@ -17,6 +17,7 @@ export interface PageDef {
 
 export const PAGES: PageDef[] = [
   { id: "dashboard", label: "Overview", icon: LayoutDashboard, blurb: "Live risk picture across India", objective: "Predictive risk dashboard", load: () => import("@/pages/Dashboard") },
+  { id: "attack", label: "Attack Demo", icon: Bug, blurb: "Follow one firmware attack end to end", howto: "Launch a trojanised firmware update and follow it: detection, the AI model and SHAP, the agents, human approval, containment, the blockchain and the digital twin.", objective: "End-to-end: detect, predict, respond, record", load: () => import("@/pages/AttackDemo") },
   { id: "assets", label: "Assets & Vulnerabilities", icon: Boxes, blurb: "What we run and where it is weak", howto: "Search the inventory, filter by sector or risk, and open any asset to see its CVEs, exposure and live detections.", objective: "Asset profiling · vulnerability assessment", load: () => import("@/pages/Assets") },
   { id: "risk", label: "Risk Prediction", icon: BarChart3, blurb: "Why the AI rates an asset high", howto: "Pick an asset to see how its score is built and which factors push it up or down. The second tab shows how the model was tested.", objective: "AI-based risk prediction · explainability", load: () => import("@/pages/RiskAnalysis") },
   { id: "cascade", label: "Cascade Simulator", icon: Workflow, blurb: "Test what one compromise would break", howto: "Choose an asset to compromise and a defence, press Run, and watch the failure spread to other organisations minute by minute.", objective: "Dependency & impact analysis", load: () => import("@/pages/Cascade") },

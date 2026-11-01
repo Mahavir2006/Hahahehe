@@ -62,7 +62,12 @@ def chain_feed(system, stop: threading.Event) -> None:
 def auto_advance(app, interval: float, stop: threading.Event) -> None:
     from backend import simclock
 
+    from backend.attack_demo import LIVE_HOLD
+
     while not stop.wait(interval):
+        if LIVE_HOLD.is_set():
+            log("[sim] holding: an attack demo is running")
+            continue
         try:
             P = app.state.ps03
             day = simclock.now_day() + 1

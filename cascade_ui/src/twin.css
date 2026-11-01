@@ -56,3 +56,50 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 1100px) { .twin-grid { grid-template-columns: 1fr; } .twin-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .twin-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Firmware attack demo */
+.attack-hero { padding: 16px 18px; display: grid; gap: 12px; }
+.attack-title { display: flex; gap: 12px; align-items: flex-start; }
+.attack-title > svg { color: var(--danger); margin-top: 4px; }
+.attack-title h2 { font-size: 19px; font-weight: 650; margin: 2px 0; }
+.attack-title p { color: var(--muted); font-size: 13px; }
+.attack-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.attack-facts > div { padding: 9px 11px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
+.attack-facts dt { font-size: 11px; color: var(--muted); }
+.attack-facts dd { font-size: 13px; font-weight: 550; }
+.attack-ctl { display: flex; gap: 8px; flex-wrap: wrap; }
+.attack-note { margin: 0; }
+.attack-steps { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.attack-steps button { display: grid; gap: 4px; width: 100%; height: 100%; padding: 10px; text-align: left; color: var(--muted); border-radius: 12px; opacity: 0.6; transition: 0.2s; }
+.attack-steps button strong { font-size: 12.5px; color: var(--text); line-height: 1.25; }
+.attack-steps button small { font-size: 11px; }
+.attack-steps button.done, .attack-steps button.running { opacity: 1; }
+.attack-steps button.running { border-color: var(--warn); }
+.attack-steps button.active { border-color: var(--accent); box-shadow: var(--glass-hi), 0 0 0 1px var(--accent); }
+.as-n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--card-2); font-size: 11px; font-weight: 700; }
+.attack-steps .done .as-n { color: var(--ok); }
+.attack-grid { display: grid; gap: 14px; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; }
+.attack-map { position: relative; padding: 0; overflow: hidden; border-radius: 16px; height: 640px; }
+.attack-map .riskmap { height: 100%; border-radius: 0; }
+.attack-detail { max-height: 640px; overflow-y: auto; overscroll-behavior: contain; }
+.sd { display: grid; gap: 10px; }
+.sd-why { font-size: 13px; color: var(--muted); padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); }
+.sd-why b { color: var(--text); }
+.sd-score { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.sd-score > div { padding: 8px 12px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
+.sd-score span { display: block; font-size: 11px; color: var(--muted); }
+.sd-score b { font-size: 20px; margin-right: 6px; }
+.sd-score .arrow { font-size: 20px; color: var(--dim); }
+.sd-chart { height: 280px; }
+.sd-log { display: grid; gap: 6px; font-size: 12.5px; }
+.sd-log li { display: grid; grid-template-columns: 46px 1fr; gap: 8px; }
+.sd-log time { color: var(--dim); font-variant-numeric: tabular-nums; }
+.sd-cascade, .sd-plan { display: grid; gap: 6px; font-size: 12.5px; }
+.sd-plan small { display: block; }
+.sd-contracts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.sd-contracts > div { padding: 8px 10px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
+.sd-contracts span { display: block; font-size: 11px; color: var(--muted); }
+.sd-contracts b { font-size: 18px; }
+.sd-events { max-height: 220px; overflow-y: auto; }
+@media (max-width: 1180px) { .attack-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); } .attack-grid { grid-template-columns: 1fr; } .attack-facts { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .attack-steps { grid-template-columns: 1fr 1fr; } .attack-map { height: 420px; } }
