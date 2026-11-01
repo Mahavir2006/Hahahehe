@@ -52,6 +52,8 @@ STAGES = [
 
 
 def _bulletin(run: str) -> str:
+    # each run is a new incident: a fresh simulated identifier, so intake does not dedupe it against an earlier run
+    cve = f"CVE-2026-{30000 + int(run) % 60000}"
     return f"""Vendor Security Bulletin VSB-{run}
 Title: Trojanised firmware image for Siemens SICAM PAS distributed through the update channel
 
@@ -62,7 +64,7 @@ Devices running the affected build report a firmware hash that does not match th
 Affected Products:
 - Siemens SICAM PAS versions before 8.3.0
 
-CVE: CVE-2026-31337 (simulated identifier for this demo)
+CVE: {cve} (simulated identifier for this demo)
 CVSS v3.1 Base Score: 9.8 (Critical)
 Vector: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H
 
@@ -158,7 +160,16 @@ class FirmwareAttackDemo:
             rec_before = M1.get().predict(risk.features_of(a), explain=False)["record"]
             with self.lock:
                 self.state["start_block"] = start_block
-            self._saved = {"sha": inv["observed_firmware_sha256"], "telemetry": dict(a.telemetry), "firmware_known": a.firmware_known,
+            # the genuine hash is the vendor's published one (the device may still be implanted from an earlier run)
+            import json as _json
+
+            from backend.common.chain import ROOT
+            cat = _json.loads((ROOT / "data" / "firmware_catalog.json").read_text(encoding="utf-8"))
+            genuine = next((c["firmware_sha256"] for c in cat if (c["vendor"], c["model"], c["version"]) == (inv["vendor"], inv["model"], inv["firmware_version"])), inv["observed_firmware_sha256"])
+            if inv["observed_firmware_sha256"] == IMPLANT_SHA:
+                inv["observed_firmware_sha256"] = genuine
+                n.supply_chain_check()
+            self._saved = {"sha": genuine, "telemetry": dict(a.telemetry), "firmware_known": a.firmware_known,
                            "isolated": a.isolated, "likelihood_mult": a.likelihood_mult}
 
             # 1 implant ----------------------------------------------------------------------------------------
