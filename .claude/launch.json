@@ -1,0 +1,46 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "dashboard/node_modules/vite/bin/vite.js",
+        "dashboard",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "cascade_ui",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "cascade_ui/node_modules/vite/bin/vite.js",
+        "cascade_ui",
+        "--port",
+        "8443",
+        "--strictPort",
+        "--host",
+        "127.0.0.1"
+      ],
+      "port": 8443
+    },
+    {
+      "name": "cascade_ui_build",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "cascade_ui/node_modules/vite/bin/vite.js",
+        "preview",
+        "cascade_ui",
+        "--port",
+        "4173",
+        "--strictPort",
+        "--host",
+        "127.0.0.1"
+      ],
+      "port": 4173
+    }
+  ]
+}
