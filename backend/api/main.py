@@ -420,6 +420,7 @@ def create_app(system: Optional[CascadeShieldSystem] = None) -> FastAPI:
         return S().metrics()
 
     from backend.api.ps03 import register; register(app, S, role, need_org, need_admin)  # noqa: E702  PS-03 (no-op unless PS03_ENABLE=1)
+    from backend.api.twin import register as register_twin; register_twin(app, S, role, need_org, need_admin)  # noqa: E702  digital twin
     return app
 
 

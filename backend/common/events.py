@@ -26,6 +26,17 @@ def _jsonable(v: Any) -> Any:
     return v if isinstance(v, (int, str, bool)) or v is None else str(v)
 
 
+class _NoGate:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+_NO_GATE = _NoGate()
+
+
 class EventIndexer:
     def __init__(self, chain: Chain, db_path: Path | str):
         self.chain = chain
@@ -64,6 +75,10 @@ class EventIndexer:
 
     def sync(self) -> int:
         """Index new logs; returns the number of newly stored events."""
+        with getattr(self.chain, "gate", _NO_GATE):  # never index a what-if fork that is about to be reverted
+            return self._sync()
+
+    def _sync(self) -> int:
         latest = self.chain.block_number()
         start = self.last_block() + 1
         if start > latest:

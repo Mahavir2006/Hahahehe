@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react"
-import { Activity, BarChart3, Boxes, Fingerprint, FileSearch, LayoutDashboard, Radar, ScrollText, SearchX, Siren, Workflow, Wrench, type LucideIcon } from "lucide-react"
+import { Activity, BarChart3, Boxes, Fingerprint, FileSearch, LayoutDashboard, Network, Radar, ScrollText, SearchX, Siren, Workflow, Wrench, type LucideIcon } from "lucide-react"
 
-export type PageId = "dashboard" | "assets" | "risk" | "cascade" | "proactive" | "actions" | "respond" | "audit" | "simulate" | "trust"
+export type PageId = "dashboard" | "assets" | "risk" | "cascade" | "proactive" | "actions" | "respond" | "audit" | "simulate" | "trust" | "twin"
 /** Routes that exist but are not in the menu. */
 export type RouteId = PageId | "asset" | "notfound"
 
@@ -25,6 +25,7 @@ export const PAGES: PageDef[] = [
   { id: "respond", label: "Incident Response", icon: Siren, blurb: "Act now: contain, notify, track", howto: "Every response in flight, step by step — what you decided, what the agents did, who was notified.", objective: "Immediate management and incident response", load: () => import("@/pages/Respond") },
   { id: "simulate", label: "Agents Live", icon: Activity, blurb: "Feed the real agents and move time", howto: "Send an advisory to the AI agents and watch each stage, move the simulated clock, test a service failure and check containment. Everything here runs on the live backend.", objective: "Agents in action · cascade prediction · containment", load: () => import("@/pages/Simulate") },
   { id: "trust", label: "Chain Proof", icon: Fingerprint, blurb: "Verify the real blockchain record", howto: "Check each organisation's audit log against the chain, prove a single record with a Merkle proof, see what every agent did and who can see what.", objective: "Audit integrity · supply chain · access control", load: () => import("@/pages/Trust") },
+  { id: "twin", label: "Digital Twin", icon: Network, blurb: "Live replica built from the blockchain", howto: "A live copy of the consortium rebuilt from contract events alone: travel back to any block, check every organisation sees the same twin, spot drift, and run what-ifs on a fork that is rolled back.", objective: "Digital twin · shared verifiable state · safe what-if testing", load: () => import("@/pages/Twin") },
   { id: "audit", label: "Audit Trail", icon: ScrollText, blurb: "Tamper-evident record of every decision", howto: "Every detection, alert, approval and simulation is hash-chained. Verify the chain, or simulate tampering to see it break.", objective: "Trust: private, verifiable audit", load: () => import("@/pages/Audit") },
 ]
 

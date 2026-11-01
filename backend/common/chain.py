@@ -97,6 +97,9 @@ class Chain:
         self.w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 30}))
         self._nonce_locks: Dict[str, threading.Lock] = {}
         self._lock_guard = threading.Lock()
+        # Held by every write, and by the digital twin while a what-if runs on a chain snapshot, so no real
+        # transaction can land inside a snapshot that is about to be reverted.
+        self.gate = threading.RLock()
         self.contracts: Dict[str, Any] = {}
         self._error_selectors: Dict[bytes, Any] = {}
         self.accounts: Dict[str, Any] = {}
@@ -190,7 +193,7 @@ class Chain:
             func = getattr(c.functions, fn)(*self._coerce(c, fn, args))
         except Exception as e:  # noqa: BLE001
             raise ChainError(f"bad call {contract}.{fn}: {e}") from e
-        with self._lock_for(acct.address):
+        with self.gate, self._lock_for(acct.address):
             try:
                 gas = func.estimate_gas({"from": acct.address})
             except Exception as e:  # noqa: BLE001
