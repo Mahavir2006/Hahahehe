@@ -10,6 +10,9 @@ import { sectorOf } from "@/data/derive"
 const ORGS = ["power", "water", "hospital"] as const
 const ORG_CODE = { power: "WGEC", water: "MetroWater", hospital: "CCMN" } as const
 const label = (o: string) => sectorOf[ORG_CODE[o as keyof typeof ORG_CODE]]?.label ?? o
+/** The traces API has no timestamps and is ordered by organisation: list meaningful traces (advisories,
+ *  executions, quarantines) first, then the routine timer re-scores, so every trace stays selectable. */
+const byInterest = (ts: any[]) => [...ts].sort((a, b) => Number(/timer/.test(a.label)) - Number(/timer/.test(b.label)) || b.steps - a.steps)
 const short = (h: string) => (h ? `${h.slice(0, 8)}…${h.slice(-4)}` : "")
 
 /* ------------------------------------------------ 1. audit integrity */
@@ -69,7 +72,7 @@ function AuditIntegrity() {
 
 function MerkleProof() {
   const traces = useApi<any[]>("/api/traces", 20_000)
-  const recent = (traces.data ?? []).slice(-40).reverse()
+  const recent = byInterest(traces.data ?? [])
   const [tid, setTid] = useState("")
   const sel = tid || recent[0]?.trace_id || ""
   const org = recent.find((t) => t.trace_id === sel)?.org ?? "power"
@@ -156,7 +159,7 @@ const STEP = 72 // horizontal gap per trace step, wide enough for the tool name 
 const TYPE_COLOR: Record<string, string> = { observation: "var(--dim)", tool_call: "var(--accent)", decision: "var(--warn)", llm_call: "var(--accent-2)", error: "var(--danger)" }
 function AgentSwimlane() {
   const traces = useApi<any[]>("/api/traces", 20_000)
-  const list = (traces.data ?? []).filter((t) => t.steps > 2).slice(-40).reverse()
+  const list = byInterest((traces.data ?? []).filter((t) => t.steps > 2))
   const [tid, setTid] = useState("")
   const sel = tid || list[0]?.trace_id || ""
   const t = useApi(sel ? `/api/traces/${sel}` : null)
