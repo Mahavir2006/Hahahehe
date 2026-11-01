@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Run the whole stack locally for the dashboard: a local Hardhat chain (deployed + seeded), the three org nodes
-(bootstrapped) and the FastAPI server on http://127.0.0.1:8000. Then `cd dashboard && npm run dev`.
+(bootstrapped) and the FastAPI server on http://127.0.0.1:8000. The UI runs separately: `cd cascade_ui && npm run dev`.
 
     python scripts/serve.py [--port 8000] [--headline]     # --headline also ingests the demo advisory
 """

@@ -75,10 +75,10 @@ def run_tests_and_get_coverage():
     except Exception as e:
         results["pytest"] = {"success": False, "output": "", "errors": str(e)}
     try:
-        result = subprocess.run(["npm", "test"], cwd="dashboard", capture_output=True, text=True, timeout=120)
-        results["vitest"] = {"success": result.returncode == 0, "output": result.stdout[-2000:] if result.stdout else "", "errors": result.stderr[-1000:] if result.stderr else ""}
-    except Exception:
-        results["vitest"] = {"success": True, "output": "Skipped", "errors": "Dashboard not configured"}
+        result = subprocess.run(["npm", "run", "typecheck"], cwd="cascade_ui", capture_output=True, text=True, timeout=120, shell=sys.platform == "win32")
+        results["ui_typecheck"] = {"success": result.returncode == 0, "output": result.stdout[-2000:] if result.stdout else "", "errors": result.stderr[-1000:] if result.stderr else ""}
+    except Exception as e:
+        results["ui_typecheck"] = {"success": False, "output": "", "errors": f"cascade_ui type-check could not run: {e}"}
     all_success = all(r.get("success", False) for r in results.values())
     return all_success, results
 

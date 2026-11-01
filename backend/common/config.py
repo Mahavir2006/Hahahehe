@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     api_workers: int = Field(default=1, alias="API_WORKERS")
     
     # Dashboard Configuration
-    dashboard_port: int = Field(default=5173, alias="DASHBOARD_PORT")
+    dashboard_port: int = Field(default=8443, alias="DASHBOARD_PORT")  # cascade_ui dev server
     vite_api_url: str = Field(default="http://localhost:8000", alias="VITE_API_URL")
     vite_chain_rpc_url: str = Field(default="http://localhost:8545", alias="VITE_CHAIN_RPC_URL")
     

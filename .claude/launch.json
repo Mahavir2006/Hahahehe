@@ -2,18 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "dashboard",
-      "runtimeExecutable": "node",
-      "runtimeArgs": [
-        "dashboard/node_modules/vite/bin/vite.js",
-        "dashboard",
-        "--port",
-        "5173",
-        "--strictPort"
-      ],
-      "port": 5173
-    },
-    {
       "name": "cascade_ui",
       "runtimeExecutable": "node",
       "runtimeArgs": [
