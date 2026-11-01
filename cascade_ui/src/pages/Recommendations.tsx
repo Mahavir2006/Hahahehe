@@ -26,9 +26,10 @@ export default function Recommendations() {
   const afterAvg = ranked.reduce((s, a) => s + riskAfter(a, actionsFor(a).filter((x) => top.some((t) => t.x.id === x.id))), 0) / ranked.length
 
 
+
   return (
     <div className="page">
-      <Card title="If you do the top 10 actions" sub="Backend what-if: each action re-scored with the same M1 model on the live portfolio">
+      <Card title="If you do the top 10 actions" sub="Estimated by the what-if model on the simulated portfolio">
         <div className="impact">
           <div>
             <span>Average risk now</span>
@@ -68,7 +69,7 @@ export default function Recommendations() {
         </div>
       </Card>
 
-      <Card title="Prioritised action plan" sub="Biggest risk reduction first · open an asset to safety-check and submit a quarantine for approval">
+      <Card title="Prioritised action plan" sub="Biggest risk reduction first · every action needs 2 human approvals (ApprovalGate)">
         <ol className="plan">
           {top.map(({ a, x, gain }, i) => {
             const after = riskAfter(a, [x])

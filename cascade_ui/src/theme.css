@@ -1,0 +1,122 @@
+/* Glass surfaces, light/dark themes and the home layout. Loaded after index.css. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.glass, .card, .stat { background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%); box-shadow: var(--shadow); }
+.glass-strong { background: var(--glass-strong); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.stat::before { display: none; }
+.stat strong { font-weight: 600; }
+.topbar { background: var(--glass-strong); border-bottom: 1px solid var(--glass-border); }
+.brand-mark { background: var(--accent); }
+.search { background: var(--card); border-color: var(--line); }
+.suggest, .alerts-pop { background: var(--glass-strong); backdrop-filter: blur(18px); border-color: var(--glass-border); box-shadow: var(--shadow); }
+.sim-pill { font-weight: 500; }
+.menu { border-right: 1px solid var(--glass-border); }
+.menu-item.active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.panel-slide { background: var(--glass-strong); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border-left-color: var(--glass-border); }
+.ps-head { background: var(--glass-strong); }
+.ps-score { background: var(--line); border-color: var(--line); }
+.ps-score > div, .acts label, .whatif, .dets li, .chain li, .contracts li, .privacy li, .formula > div, .impact > div, .plan li, .agent-detail, .flow li > button, .flow li:first-child { background: var(--card); }
+.btn { background: var(--card-2); border-color: var(--line-2); font-weight: 500; }
+.btn:hover:not(:disabled) { background: var(--card); border-color: var(--accent); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 85%, #000); }
+.btn-sm { padding: 6px 10px; font-size: 12px; }
+.input, .seg { background: var(--card); border-color: var(--line); }
+.seg button.active { background: var(--surface); }
+.level { font-weight: 600; }
+.skeleton { background: linear-gradient(90deg, var(--card) 25%, var(--card-2) 50%, var(--card) 75%); background-size: 200% 100%; }
+.toast { background: var(--glass-strong); backdrop-filter: blur(18px); border-color: var(--glass-border); }
+code { color: var(--accent); }
+.gate { color: #fff; background: var(--warn); }
+:root[data-theme="light"] .tag-danger { color: #a3302d; }
+:root[data-theme="light"] .tag-warn { color: #8a5310; }
+:root[data-theme="light"] .tag-ok { color: #1d6e4d; }
+:root[data-theme="light"] .tag-info { color: #1d5f8a; }
+:root[data-theme="light"] .scrim { background: rgba(15, 23, 42, 0.25); }
+body, .card, .glass, .topbar { transition: background-color 0.3s, border-color 0.3s, color 0.3s; }
+
+/* map: theme-aware colours */
+.riskmap { background: var(--map-bg); border-radius: var(--radius); }
+.m-grid { fill: none; stroke: var(--map-grid); stroke-width: 1; }
+.m-land { fill: var(--map-land); stroke: var(--map-edge); stroke-width: 1.6; stroke-linejoin: round; }
+.m-link { stroke: var(--map-link); stroke-width: 1.2; }
+.m-link.potential { stroke-dasharray: 4 3; }
+.m-link.hot { stroke: var(--danger); stroke-width: 2.4; }
+.m-leader { stroke: var(--map-edge); stroke-width: 0.8; }
+.m-dot { stroke: var(--map-halo); stroke-width: 1.4; }
+.m-dot.sel { stroke: var(--text); stroke-width: 2.4; }
+.m-dot.down { stroke: var(--danger); stroke-width: 2; }
+.riskmap .lbl { fill: var(--map-label); stroke: var(--map-halo); }
+.riskmap .cities text { fill: var(--map-city); }
+.map-zoom { padding: 3px; border-radius: 10px; }
+.map-zoom button { background: transparent; border: 0; color: var(--text); }
+.map-zoom button:hover { background: var(--card-2); }
+.map-legend { gap: 6px 14px; border-radius: 10px; border: 1px solid var(--glass-border); }
+.map-legend i.ring { background: transparent; border: 2px solid; width: 10px; height: 10px; }
+.ln, .ln.dash { border-color: var(--map-link); }
+.map-wrap { padding: 0; overflow: hidden; }
+
+/* small info card that opens next to a clicked marker */
+.map-card { position: absolute; z-index: 5; width: 264px; padding: 14px; border-radius: 12px; transform: translate(18px, -50%); animation: card-in 0.18s ease; }
+.map-card.flip { transform: translate(calc(-100% - 18px), -50%); }
+@keyframes card-in { from { opacity: 0; } }
+.map-card-x { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; color: var(--muted); }
+.map-card-x:hover { background: var(--card-2); color: var(--text); }
+.mapinfo { display: grid; gap: 8px; font-size: 12.5px; }
+.mapinfo-sector { font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.mapinfo > strong { font-size: 13.5px; font-weight: 600; padding-right: 18px; line-height: 1.3; }
+.mapinfo-score { display: flex; align-items: baseline; gap: 8px; }
+.mapinfo-score b { font-size: 24px; font-weight: 600; }
+.mapinfo-score span { color: var(--muted); }
+.mapinfo dl { display: grid; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); }
+.mapinfo dt { color: var(--dim); font-size: 11px; margin-top: 4px; }
+.mapinfo em { font-style: normal; color: var(--ok); white-space: nowrap; }
+.mapinfo .btn { justify-self: start; }
+
+/* home: map in the centre, context on both sides */
+.main-home { max-width: none; padding: 16px; }
+.home { display: grid; gap: 14px; grid-template-columns: 290px minmax(0, 1fr) 300px; height: calc(100vh - var(--top) - 32px); min-height: 620px; animation: fade 0.3s ease; }
+.home-side { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.home-map { position: relative; padding: 0; border-radius: var(--radius); overflow: hidden; min-height: 0; }
+.home-map .riskmap { height: 100%; border-radius: 0; background: transparent; }
+.pane { padding: 16px; border-radius: var(--radius); }
+.pane.grow { flex: 1; min-height: 0; overflow-y: auto; }
+.pane-title { font-size: 11.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.pane-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pane-row .pane-title { margin-bottom: 0; }
+.text-btn { font-size: 12px; color: var(--accent); }
+.text-btn:hover { text-decoration: underline; }
+.metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+.metrics dt { font-size: 11.5px; color: var(--muted); }
+.metrics dd { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.metrics dd.crit { color: var(--danger); }
+.prio { display: grid; gap: 2px; margin-top: 10px; }
+.prio button { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; padding: 8px 6px; border-radius: 8px; text-align: left; transition: background 0.15s; }
+.prio button:hover, .prio button.active { background: var(--card-2); }
+.prio-n { font-size: 11px; color: var(--dim); }
+.prio-main strong { display: block; font-size: 13px; font-weight: 600; }
+.prio-main small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prio b { font-weight: 600; }
+.sectors { display: grid; gap: 12px; }
+.sectors .pane-row span { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; }
+.sectors i { width: 8px; height: 8px; border-radius: 50%; }
+.sectors b { font-weight: 600; }
+.meter { height: 4px; margin: 6px 0 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.meter span { display: block; height: 100%; border-radius: 4px; }
+.bands { display: flex; gap: 2px; height: 6px; margin-top: 16px; border-radius: 4px; overflow: hidden; }
+.bands-key { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--muted); }
+.trendchart { height: 120px; }
+.impact-list { display: grid; gap: 10px; }
+.impact-list li { display: flex; gap: 10px; font-size: 12.5px; }
+.impact-list i { flex: none; width: 3px; border-radius: 2px; }
+.impact-list strong { font-weight: 600; }
+@media (max-width: 1180px) {
+  .home { grid-template-columns: 1fr 1fr; height: auto; }
+  .home-map { grid-column: 1 / -1; order: -1; height: 520px; }
+}
+@media (max-width: 760px) {
+  .home { grid-template-columns: 1fr; }
+  .home-map { height: 440px; }
+  .map-card { width: 230px; }
+}
+.riskmap .lbl { font-size: 8.5px; }
+.riskmap .cities text { font-size: 8px; }

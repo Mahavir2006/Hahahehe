@@ -2,7 +2,7 @@
 Canonical JSON and cryptographic utilities for CascadeShield.
 This module provides deterministic serialization and hashing used across
 the backend, agents, and audit verification. The same algorithm is
-mirrored in dashboard/src/utils/canonical.ts for cross-language verification.
+mirrored in shared/canonical.ts for cross-language verification.
 """
 
 import json

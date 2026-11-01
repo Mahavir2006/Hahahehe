@@ -1,6 +1,6 @@
 # Makefile for CascadeShield - AI-Based Critical Infrastructure Cyber-Risk Prediction
 
-.PHONY: help setup chain deploy test test-chain test-backend test-dashboard lint demo verify-spec clean
+.PHONY: help setup chain deploy test test-chain test-backend test-ui lint demo verify-spec clean
 
 # Default target
 help:
@@ -8,10 +8,10 @@ help:
 	@echo "  make setup          - Install Python + Node deps, compile contracts, generate data, train model"
 	@echo "  make chain          - Start local Hardhat chain"
 	@echo "  make deploy         - Deploy + seed contracts"
-	@echo "  make test           - Run all tests (chain + backend + dashboard)"
+	@echo "  make test           - Run all tests (chain + backend + UI type-check and build)"
 	@echo "  make test-chain     - Hardhat tests + coverage + gas report"
 	@echo "  make test-backend   - Pytest all (offline LLM)"
-	@echo "  make test-dashboard - Vitest tests"
+	@echo "  make test-ui        - UI (cascade_ui) type-check and production build"
 	@echo "  make lint           - Python (ruff, mypy) + Solidity (solhint) + TS (eslint, tsc)"
 	@echo "  make demo           - Full automated demo (run_demo.py)"
 	@echo "  make verify-spec    - Run scripts/verify_spec.py (traceability gate)"
@@ -71,7 +71,7 @@ deploy:
 # ============================================================================
 # TESTS
 # ============================================================================
-test: test-chain test-backend test-dashboard
+test: test-chain test-backend test-ui
 
 test-chain:
 	cd chain && npx hardhat test
@@ -80,8 +80,8 @@ test-chain:
 test-backend:
 	python -m pytest backend/tests -v --tb=short -m "not live_llm"
 
-test-dashboard:
-	cd dashboard && npm test
+test-ui:
+	cd cascade_ui && npm run typecheck && npm run build
 
 # ============================================================================
 # LINT
@@ -95,7 +95,7 @@ lint-solidity:
 	cd chain && npx solhint contracts/**/*.sol
 
 lint-typescript:
-	cd dashboard && npm run lint
+	cd cascade_ui && npm run typecheck
 
 # ============================================================================
 # DEMO & VERIFY
@@ -112,7 +112,7 @@ verify-spec:
 clean:
 	rm -rf chain/artifacts chain/cache chain/coverage chain/deployments
 	rm -rf backend/risk/artifacts backend/__pycache__ backend/**/__pycache__
-	rm -rf dashboard/node_modules dashboard/dist dashboard/coverage
+	rm -rf cascade_ui/node_modules cascade_ui/dist
 	rm -rf data/orgs data/advisories data/*.json data/*.csv
 	rm -rf docs/VERIFICATION_REPORT.md docs/DECISIONS.md docs/DEVIATIONS.md
 	find . -name "*.pyc" -delete
@@ -125,7 +125,7 @@ clean:
 dev: chain
 	@echo "Chain running. In another terminal run: make deploy"
 	@echo "Then: cd backend && uvicorn api.main:app --reload"
-	@echo "And: cd dashboard && npm run dev"
+	@echo "And: cd cascade_ui && npm run dev   (UI on http://localhost:8443)"
 
 # Run a specific test file
 test-file:

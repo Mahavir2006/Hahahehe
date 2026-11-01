@@ -1,34 +1,51 @@
 import { createContext, useContext } from "react"
-import { Activity, BarChart3, Boxes, BrainCircuit, Fingerprint, LayoutDashboard, Map, ShieldCheck, Wrench, type LucideIcon } from "lucide-react"
+import { Activity, BarChart3, Boxes, Fingerprint, FileSearch, LayoutDashboard, Radar, ScrollText, SearchX, Siren, Workflow, Wrench, type LucideIcon } from "lucide-react"
 
-export type PageId = "dashboard" | "map" | "assets" | "risk" | "actions" | "simulate" | "trust" | "platform" | "model"
+export type PageId = "dashboard" | "assets" | "risk" | "cascade" | "proactive" | "actions" | "respond" | "audit" | "simulate" | "trust"
+/** Routes that exist but are not in the menu. */
+export type RouteId = PageId | "asset" | "notfound"
 
 export interface PageDef {
-  id: PageId
+  id: RouteId
   label: string
   icon: LucideIcon
   blurb: string
+  howto?: string // one line: what you do on this page
   objective: string // the PS-03 objective this page answers
   load: () => Promise<{ default: React.ComponentType }>
 }
 
 export const PAGES: PageDef[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, blurb: "What needs attention right now", objective: "Predictive risk dashboard", load: () => import("@/pages/Dashboard") },
-  { id: "map", label: "Infrastructure Map", icon: Map, blurb: "Assets, dependencies and cascade paths", objective: "Asset profiling · dependency & impact analysis", load: () => import("@/pages/MapPage") },
-  { id: "assets", label: "Assets & Vulnerabilities", icon: Boxes, blurb: "Inventory, CVEs, exposure and detections", objective: "Vulnerability assessment · risk prioritisation", load: () => import("@/pages/Assets") },
-  { id: "risk", label: "Risk Analysis", icon: BarChart3, blurb: "Why an asset is high risk", objective: "AI-based risk prediction", load: () => import("@/pages/RiskAnalysis") },
-  { id: "actions", label: "Recommendations", icon: Wrench, blurb: "Preventive actions and their risk reduction", objective: "Preventive recommendations", load: () => import("@/pages/Recommendations") },
-  { id: "simulate", label: "Simulate & Respond", icon: Activity, blurb: "Feed the agents, move time, watch cascades", objective: "Agents in action · cascade prediction · containment", load: () => import("@/pages/Simulate") },
-  { id: "trust", label: "Trust & Audit", icon: Fingerprint, blurb: "Prove nothing was tampered with", objective: "Audit integrity · supply chain · access control", load: () => import("@/pages/Trust") },
-  { id: "platform", label: "Agents & Blockchain", icon: ShieldCheck, blurb: "How CascadeShield works end to end", objective: "Trust: AI agents, human approval, private audit trail", load: () => import("@/pages/Platform") },
-  { id: "model", label: "AI Model", icon: BrainCircuit, blurb: "How the risk model was built and tested", objective: "Model evidence and limits", load: () => import("@/pages/Model") },
+  { id: "dashboard", label: "Overview", icon: LayoutDashboard, blurb: "Live risk picture across India", objective: "Predictive risk dashboard", load: () => import("@/pages/Dashboard") },
+  { id: "assets", label: "Assets & Vulnerabilities", icon: Boxes, blurb: "What we run and where it is weak", howto: "Search the inventory, filter by sector or risk, and open any asset to see its CVEs, exposure and live detections.", objective: "Asset profiling · vulnerability assessment", load: () => import("@/pages/Assets") },
+  { id: "risk", label: "Risk Prediction", icon: BarChart3, blurb: "Why the AI rates an asset high", howto: "Pick an asset to see how its score is built and which factors push it up or down. The second tab shows how the model was tested.", objective: "AI-based risk prediction · explainability", load: () => import("@/pages/RiskAnalysis") },
+  { id: "cascade", label: "Cascade Simulator", icon: Workflow, blurb: "Test what one compromise would break", howto: "Choose an asset to compromise and a defence, press Run, and watch the failure spread to other organisations minute by minute.", objective: "Dependency & impact analysis", load: () => import("@/pages/Cascade") },
+  { id: "proactive", label: "Proactive Scenarios", icon: Radar, blurb: "Prepare before an incident happens", howto: "Pick a situation that hasn't happened yet to see which assets it would push into danger and what to do now. The replay shows a full week.", objective: "From reactive to proactive risk assessment", load: () => import("@/pages/Proactive") },
+  { id: "actions", label: "Recommendations", icon: Wrench, blurb: "Preventive actions and approvals", howto: "Actions are ranked by how much risk they remove. Each needs two human approvals; every vote is written to the Audit Trail.", objective: "Preventive recommendations", load: () => import("@/pages/Recommendations") },
+  { id: "respond", label: "Incident Response", icon: Siren, blurb: "Act now: contain, notify, track", howto: "Every response in flight, step by step — what you decided, what the agents did, who was notified.", objective: "Immediate management and incident response", load: () => import("@/pages/Respond") },
+  { id: "simulate", label: "Agents Live", icon: Activity, blurb: "Feed the real agents and move time", howto: "Send an advisory to the AI agents and watch each stage, move the simulated clock, test a service failure and check containment. Everything here runs on the live backend.", objective: "Agents in action · cascade prediction · containment", load: () => import("@/pages/Simulate") },
+  { id: "trust", label: "Chain Proof", icon: Fingerprint, blurb: "Verify the real blockchain record", howto: "Check each organisation's audit log against the chain, prove a single record with a Merkle proof, see what every agent did and who can see what.", objective: "Audit integrity · supply chain · access control", load: () => import("@/pages/Trust") },
+  { id: "audit", label: "Audit Trail", icon: ScrollText, blurb: "Tamper-evident record of every decision", howto: "Every detection, alert, approval and simulation is hash-chained. Verify the chain, or simulate tampering to see it break.", objective: "Trust: private, verifiable audit", load: () => import("@/pages/Audit") },
+]
+
+/** Old links keep working. */
+export const ALIASES: Record<string, PageId> = { map: "dashboard", platform: "audit", model: "risk" }
+
+export const HIDDEN: PageDef[] = [
+  { id: "asset", label: "Asset analysis", icon: FileSearch, blurb: "Full analysis and fixes for one asset", objective: "Explain why an asset is high risk", load: () => import("@/pages/AssetPage") },
+  { id: "notfound", label: "Not found", icon: SearchX, blurb: "This page does not exist", objective: "", load: () => import("@/pages/NotFound") },
 ]
 
 export interface Nav {
-  page: PageId
-  go: (p: PageId) => void
+  page: RouteId
+  go: (p: RouteId) => void
+  /** Quick look: side panel over the current page. */
   openAsset: (id: string) => void
+  /** Full-page analysis and fixes for one asset. */
+  openAssetPage: (id: string) => void
+  back: () => void
   focusAsset: string | null
+  missing: string | null
 }
-export const NavContext = createContext<Nav>({ page: "dashboard", go: () => {}, openAsset: () => {}, focusAsset: null })
+export const NavContext = createContext<Nav>({ page: "dashboard", go: () => {}, openAsset: () => {}, openAssetPage: () => {}, back: () => {}, focusAsset: null, missing: null })
 export const useNav = () => useContext(NavContext)

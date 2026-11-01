@@ -116,7 +116,7 @@ def main() -> int:
         app.state.ps03.ensure()
         log(f"[sim] auto-advance: one simulated day every {a.live_interval:g} s (demo week first)")
         threading.Thread(target=auto_advance, args=(app, a.live_interval, stop), daemon=True).start()
-    log(f"API on http://127.0.0.1:{a.port}  (dashboard: npm --prefix dashboard run dev -> http://localhost:5173)")
+    log(f"API on http://127.0.0.1:{a.port}  (UI: npm --prefix cascade_ui run dev -> http://localhost:8443)")
     try:
         uvicorn.run(app, host="127.0.0.1", port=a.port, log_level="warning")
     finally:

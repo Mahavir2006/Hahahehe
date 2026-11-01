@@ -4,6 +4,10 @@ import "@fontsource-variable/inter/wght.css" // self-hosted font (font-display: 
 import App from "./App"
 import { refresh, startPolling } from "./data/live"
 import "./index.css"
+import "./theme.css"
+import "./map.css"
+import "./skin.css"
+import "./sections.css"
 
 // one root even when this module hot-reloads
 const w = window as unknown as { __csRoot?: ReactDOM.Root }

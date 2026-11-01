@@ -43,7 +43,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Node / Hardhat / Dashboard
+# Node / Hardhat / UI
 node_modules/
 npm-debug.log
 yarn.lock
@@ -56,10 +56,10 @@ chain/deployments/
 chain/coverage/
 chain/typechain-types/
 chain/*.tsbuildinfo
-dashboard/dist/
-dashboard/.vite/
-dashboard/node_modules/
-dashboard/.env.local
+cascade_ui/dist/
+cascade_ui/.vite/
+cascade_ui/node_modules/
+cascade_ui/.env.local
 
 # TypeScript
 *.tsbuildinfo

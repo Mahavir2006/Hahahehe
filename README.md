@@ -53,13 +53,15 @@ python scripts/serve.py --headline   # chain + 3 org nodes + API on http://127.0
 ```
 
 ```bash
-cd dashboard && npm run dev          # dashboard on http://localhost:5173 (proxies /api to :8000)
+cd cascade_ui && npm install && npm run dev   # UI on http://localhost:8443
 ```
 
-The dashboard has seven views: risk overview (ranked assets, bands, trend), asset panel ("why": SHAP drivers,
-CVEs, what changed), infrastructure map with a "what if this service fails" cascade, plans and approvals
-(approve, execute), detections, audit and chain, and the model card. Switch the role (consortium admin or an
-org operator) in the header; an org operator only ever sees its own private data.
+The UI (`cascade_ui/`) has eight sections, each tied to a PS-03 objective: Overview (live threat map of India),
+Assets & Vulnerabilities, Risk Prediction (SHAP "why" and the model evidence), Cascade Simulator (compromise an
+asset and watch the failure spread, with and without containment), Proactive Scenarios (threats that have not
+happened yet, plus a week replay), Recommendations (ranked preventive actions with two-person approval), Incident
+Response (isolate or apply a plan, notify and assign teams, track each step) and Audit Trail (hash-chained log with
+verify and tamper test). It runs on simulated demo data and is not yet wired to the API.
 
 ### Test and verify
 
@@ -96,7 +98,7 @@ Decoy/
 │   ├── risk/                 M1 features, training, inference, evaluation, detection rules D, trend M4, artifacts
 │   ├── system.py             wires chain, indexer and the three org nodes
 │   └── tests/                unit, end-to-end on a live chain, API
-├── dashboard/                React + Vite dashboard on the API
+├── cascade_ui/               React + Vite UI: threat map, cascade simulator, scenarios, response, audit
 ├── data/
 │   ├── real/, real_extra/    CISA CSAF OT advisories, CISA KEV, FIRST EPSS, NVD (checksummed)
 │   ├── orgs/, advisories/    the three demo organisations and sample advisories
@@ -150,8 +152,8 @@ make test-chain
 # Backend tests
 make test-backend
 
-# Dashboard tests
-make test-dashboard
+# UI type-check and production build
+make test-ui
 ```
 
 ## Demo

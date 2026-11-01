@@ -1,14 +1,10 @@
 import { useState } from "react"
 import { Bot, FileText, Lock, UserCheck } from "lucide-react"
 import { Card, Tag } from "@/components/ui"
-import { AGENTS, chain, CONTRACTS, PRIVACY, QUALITY, traces } from "@/data/derive"
-import { useLive } from "@/data/live"
-
-const short = (h: string) => `${h.slice(0, 10)}…${h.slice(-6)}`
+import { AGENTS, CONTRACTS, PRIVACY, QUALITY } from "@/data/derive"
 
 export default function Platform() {
   const [step, setStep] = useState(0)
-  useLive()
   const s = AGENTS[step]
   return (
     <div className="page">
@@ -42,18 +38,12 @@ export default function Platform() {
       </Card>
 
       <div className="grid-2">
-        <Card title="Six smart contracts" sub={`Local Hardhat chain ${chain.chainId} · ${chain.connected ? "connected" : "DISCONNECTED"} · block ${chain.block}`}>
+        <Card title="Six smart contracts" sub="Local Ethereum chain (Hardhat) — the shared, tamper-evident record between organisations">
           <ul className="contracts">
             {CONTRACTS.map((c) => (
               <li key={c.name}>
                 <code>{c.name}</code>
-                <span>
-                  {c.does}
-                  <small className="muted">
-                    {" "}
-                    {chain.contracts[c.name] ? `at ${short(chain.contracts[c.name])}` : "not deployed"}
-                  </small>
-                </span>
+                <span>{c.does}</span>
               </li>
             ))}
           </ul>
@@ -73,40 +63,7 @@ export default function Platform() {
         </Card>
       </div>
 
-      <Card title="Live chain feed" sub={`Latest contract events on the local chain · ${chain.reassessments} risk reassessments · audit entries ${Object.entries(chain.auditLengths).map(([o, n]) => `${o} ${n}`).join(", ")}`}>
-        <div className="table-wrap">
-          <table className="tbl ledger">
-            <thead>
-              <tr>
-                <th>Block</th>
-                <th>Contract · event</th>
-                <th>Org</th>
-                <th>Transaction hash</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chain.events.map((e) => (
-                <tr key={e.tx + e.event}>
-                  <td>{e.block}</td>
-                  <td>
-                    <strong>{e.contract}</strong>
-                    <small>{e.event}</small>
-                  </td>
-                  <td>{e.org || "—"}</td>
-                  <td>
-                    <code className="hash" title={e.tx}>
-                      {short(e.tx)}
-                    </code>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="muted small">Real transactions from /api/ps03/chain/live, refreshed every 8 s. Agent traces recorded: {traces.map((t) => `${t.org} ${t.count}`).join(" · ") || "none"}.</p>
-      </Card>
-
-      <Card title="Built and tested" sub="Measured on this machine (pytest run and live agent run)">
+      <Card title="Built and tested" sub="From the CascadeShield repository">
         <div className="grid-stats four">
           {QUALITY.map((q) => (
             <div className="stat" key={q.label}>

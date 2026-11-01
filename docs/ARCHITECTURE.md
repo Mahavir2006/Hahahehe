@@ -38,8 +38,10 @@ Python async agent runtime:
 - **`api/`** — FastAPI with SSE, org-scoped endpoints
 - **`tests/`** — Pytest unit, integration, and lifecycle tests
 
-### 4. Dashboard Layer (`dashboard/`)
-React + Vite + TypeScript with ethers.js read-only on-chain verification for Audit Verification and Attestations views (DASH-10).
+### 4. UI Layer (`cascade_ui/`)
+React + Vite + TypeScript. Eight sections (overview map, assets, risk prediction, cascade simulator, proactive
+scenarios, recommendations, incident response, audit trail) on simulated demo data; not yet connected to the API.
+The cross-language canonical JSON helper used by the chain tests lives in `shared/canonical.ts`.
 
 ## Data Flow
 

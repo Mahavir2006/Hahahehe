@@ -1,17 +1,31 @@
-import { useState } from "react"
+import { lazy, Suspense, useState } from "react"
 import { useNav } from "@/app/nav"
-import { Card, Level, Sparkline, Tag } from "@/components/ui"
+import { Card, Level, Skeleton, Sparkline, Tag } from "@/components/ui"
 import { cascadeChain, levelColor, predict, ranked, sectorOf, THRESHOLDS } from "@/data/derive"
 
+const ModelEvidence = lazy(() => import("./Model"))
+
 export default function RiskAnalysis() {
+  const [view, setView] = useState<"asset" | "model">("asset")
   const { openAsset, focusAsset } = useNav()
   const [id, setId] = useState(focusAsset ?? ranked[0].id)
   const a = ranked.find((x) => x.id === id) ?? ranked[0]
   const p = predict(a.id)
   const max = Math.max(1, ...p.shapFactors.map((f) => Math.abs(f.bpDelta)))
 
+  if (view === "model")
+    return (
+      <div className="page">
+        <ViewTabs view={view} setView={setView} />
+        <Suspense fallback={<Skeleton h={420} />}>
+          <ModelEvidence />
+        </Suspense>
+      </div>
+    )
+
   return (
     <div className="page">
+      <ViewTabs view={view} setView={setView} />
       <Card title="How a risk score is made" sub="Risk = compromise likelihood (AI model) × operational impact (criticality and dependants)">
         <div className="formula">
           <div>
@@ -115,6 +129,19 @@ export default function RiskAnalysis() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function ViewTabs({ view, setView }: { view: "asset" | "model"; setView: (v: "asset" | "model") => void }) {
+  return (
+    <div className="seg" role="tablist" aria-label="Risk prediction views">
+      <button role="tab" aria-selected={view === "asset"} className={view === "asset" ? "active" : ""} onClick={() => setView("asset")}>
+        Explain an asset
+      </button>
+      <button role="tab" aria-selected={view === "model"} className={view === "model" ? "active" : ""} onClick={() => setView("model")}>
+        Model & evidence
+      </button>
     </div>
   )
 }

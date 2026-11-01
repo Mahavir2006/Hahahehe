@@ -1,11 +1,13 @@
 """
-API integration over the live, chain-backed system (runs after the lifecycle tests, so plans, approvals, alerts and
-traces exist). Covers every route group, role isolation (API-02) and the ML endpoints.
+API integration over the live, chain-backed system. In the full suite it runs after the lifecycle tests, so plans,
+approvals, alerts and traces already exist; run on its own, the fixture produces them by ingesting the headline
+advisory first. Covers every route group, role isolation (API-02) and the ML endpoints.
 """
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.api.main import create_app
+from backend.tests.conftest import adv
 
 ADMIN = {"X-Dev-Role": "admin"}
 POWER = {"X-Dev-Role": "org:power"}
@@ -14,6 +16,8 @@ WATER = {"X-Dev-Role": "org:water"}
 
 @pytest.fixture(scope="module")
 def api(system):
+    if not any(n.plans for n in system.nodes.values()):
+        system.ingest(adv(1))  # same headline advisory the lifecycle tests use; creates plans and traces
     return TestClient(create_app(system))
 
 
