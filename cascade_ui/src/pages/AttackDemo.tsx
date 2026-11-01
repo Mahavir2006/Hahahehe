@@ -240,6 +240,7 @@ function StageDetail({ s }: { s: Stage }) {
           </dd>
         </dl>
       )}
+      {s.id === "implant" && <FirmwareImage />}
       {s.id === "detect" && x.registry_result && (
         <dl className="kv">
           <dt>FirmwareRegistry says</dt>
@@ -450,5 +451,65 @@ function Record({ x }: { x: any }) {
         </dd>
       </dl>
     </>
+  )
+}
+
+type FwLine = { op: string; text: string }
+type FwImage = {
+  firmware: string
+  folder: string
+  published_sha256: string
+  vendor: { file: string; lines: string[] }
+  tampered: { file: string; sha256: string; lines: FwLine[] }
+  diff: FwLine[]
+  added_lines: number
+  changes: { what: string; effect: string; seen_by: string }[]
+  note: string
+}
+
+/** The firmware "image" behind the implant stage: the vendor build, what the attacker changed, and the hashes the
+ *  registry check compares. The tampered hash is computed from the file shown here (data/firmware/README.md). */
+function FirmwareImage() {
+  const [img, setImg] = useState<FwImage | null | false>(null)
+  const [view, setView] = useState<"diff" | "tampered" | "vendor">("diff")
+  useEffect(() => {
+    api<FwImage>("/api/attack/firmware/image").then(setImg).catch(() => setImg(false))
+  }, [])
+  if (img === null) return <p className="small">Loading the firmware image…</p>
+  if (img === false) return null
+  const lines: FwLine[] = view === "diff" ? img.diff : view === "tampered" ? img.tampered.lines : img.vendor.lines.map((text) => ({ op: " ", text }))
+  return (
+    <div className="fw">
+      <div className="pane-row">
+        <h3 className="h3">Firmware image: what the attacker changed</h3>
+        <div className="seg" role="tablist" aria-label="Firmware view">
+          {(["diff", "tampered", "vendor"] as const).map((v) => (
+            <button key={v} role="tab" aria-selected={view === v} className={view === v ? "active" : ""} onClick={() => setView(v)}>
+              {v === "diff" ? `Changes (+${img.added_lines} lines)` : v === "tampered" ? "Tampered build" : "Vendor build"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="small">
+        {img.firmware} · <code>{img.folder}</code>. The device reports the SHA-256 of the image it runs: for the tampered build that is{" "}
+        <code className="up">{short(img.tampered.sha256, 10)}</code>, computed from the file below, not the vendor-published <code>{short(img.published_sha256, 10)}</code> registered on
+        the chain.
+      </p>
+      <pre className="fw-diff" aria-label={`${view} view of ${img.tampered.file}`}>
+        {lines.map((l, i) => (
+          <span key={i} className={l.op === "+" ? "fw-add" : l.op === "-" ? "fw-del" : l.op === "@" ? "fw-hunk" : "fw-ctx"}>
+            {l.op === "@" ? l.text : `${l.op} ${l.text}`}
+          </span>
+        ))}
+      </pre>
+      <ol className="fw-changes">
+        {img.changes.map((c) => (
+          <li key={c.what}>
+            <strong>{c.what}</strong> — {c.effect}. <em>Seen by {c.seen_by}.</em>
+          </li>
+        ))}
+      </ol>
+      <p className="small muted">{img.note}</p>
+    </div>
   )
 }

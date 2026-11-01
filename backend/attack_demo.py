@@ -28,12 +28,61 @@ from eth_utils import keccak
 from backend.risk import model as risk
 from backend.risk.inference import LABELS, M1
 
+import difflib
+import hashlib
+import json
+
+from backend.common.chain import ROOT
+
 TARGET_ORG, TARGET = "power", "power-asset-001"
 # set while a demo runs: the live simulated clock (ps03_serve auto-advance) holds still so nothing else changes the device
 LIVE_HOLD = threading.Event()
 # model inputs the implant changes (firmware trust + the implant's network behaviour seen by rules D)
 ATTACK_FEATURES = ["supply_chain_flag", "firmware_known", "failed_auth_count", "new_remote_session_flag", "rule_hit_count", "high_severity_rule_hit"]
-IMPLANT_SHA = "0x" + keccak(text="cascadeshield-demo-implant:SICAM-PAS-8.2.1-trojanised").hex()
+# the firmware "images": illustrative source files (data/firmware/README.md). The device reports the SHA-256 of the
+# tampered file, so the registry mismatch shown in the demo is the real hash of the file the page displays.
+FW_DIR = ROOT / "data" / "firmware" / "sicam_pas_8.2.1"
+TARGET_FW = ("Siemens", "SICAM PAS", "8.2.1")
+IMPLANT_SHA = "0x" + hashlib.sha256((FW_DIR / "tampered_build.c").read_bytes()).hexdigest()
+IMPLANT_CHANGES = [
+    {"what": "Second signing key (BACKUP_PUBKEY)", "effect": "future tampered images pass the signature check too",
+     "seen_by": "FirmwareRegistry: the running image's hash is not the vendor-published one"},
+    {"what": "Hidden login (MAINT_MAGIC)", "effect": "a fixed 16-byte value opens a maintenance session with no password, no MFA and no audit entry",
+     "seen_by": "rules D: unexpected remote session from an unknown source, after the attacker's failed logins while probing"},
+    {"what": "Beacon every 60 s", "effect": "the device sends its serial and live configuration to 203.0.113.42:4444",
+     "seen_by": "rules D: outbound beaconing to an unknown host"},
+]
+
+
+def published_sha() -> str:
+    """The vendor-published hash for the target's firmware, as registered on the chain (data/firmware_catalog.json)."""
+    cat = json.loads((ROOT / "data" / "firmware_catalog.json").read_text(encoding="utf-8"))
+    return next(c["firmware_sha256"] for c in cat if (c["vendor"], c["model"], c["version"]) == TARGET_FW)
+
+
+def firmware_image() -> Dict[str, Any]:
+    """Both firmware sources, the attacker's diff, and the hashes the registry check compares."""
+    vendor = (FW_DIR / "vendor_build.c").read_text(encoding="utf-8").splitlines()
+    tampered = (FW_DIR / "tampered_build.c").read_text(encoding="utf-8").splitlines()
+    marks = [" "] * len(tampered)  # "+" on every line the attacker added or changed
+    for tag, _i1, _i2, j1, j2 in difflib.SequenceMatcher(None, vendor, tampered).get_opcodes():
+        if tag in ("insert", "replace"):
+            for j in range(j1, j2):
+                marks[j] = "+"
+    diff = []
+    for line in difflib.unified_diff(vendor, tampered, "vendor_build.c", "tampered_build.c", n=2, lineterm=""):
+        if line.startswith(("---", "+++")):
+            continue
+        op = line[0] if line[:1] in "+-@" else " "
+        diff.append({"op": op, "text": line if op == "@" else line[1:]})
+    return {
+        "device": TARGET, "firmware": " ".join(TARGET_FW), "folder": "data/firmware/sicam_pas_8.2.1",
+        "published_sha256": published_sha(),
+        "vendor": {"file": "vendor_build.c", "lines": vendor},
+        "tampered": {"file": "tampered_build.c", "sha256": IMPLANT_SHA, "lines": [{"op": m, "text": t} for m, t in zip(marks, tampered)]},
+        "diff": diff, "added_lines": marks.count("+"), "changes": IMPLANT_CHANGES,
+        "note": "Illustrative source standing in for the firmware binary: not compilable, fictional APIs, documentation-only beacon address.",
+    }
 ATTACK = {
     "name": "Trojanised firmware update (supply-chain implant)",
     "technique": "MITRE ATT&CK for ICS T0857 System Firmware · ATT&CK T1195.002 Compromise Software Supply Chain",

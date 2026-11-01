@@ -1,11 +1,27 @@
 """Firmware attack demo: every stage runs on the live system and leaves real evidence."""
 
+import hashlib
 import time
 
 import pytest
 
-from backend.attack_demo import ATTACK_FEATURES, IMPLANT_SHA, TARGET, TARGET_ORG, FirmwareAttackDemo
+from backend.attack_demo import ATTACK_FEATURES, FW_DIR, IMPLANT_SHA, TARGET, TARGET_ORG, FirmwareAttackDemo, firmware_image, published_sha
 from backend.twin.service import TwinService
+
+
+@pytest.mark.req("DEMO-FW-01")
+def test_firmware_image_is_the_file_shown():
+    """The hash the device reports is the SHA-256 of the tampered source on disk, and the diff is exactly the implant."""
+    assert IMPLANT_SHA == "0x" + hashlib.sha256((FW_DIR / "tampered_build.c").read_bytes()).hexdigest()
+    assert IMPLANT_SHA != published_sha()
+    img = firmware_image()
+    assert img["tampered"]["sha256"] == IMPLANT_SHA and img["published_sha256"] == published_sha()
+    added = "\n".join(l["text"] for l in img["tampered"]["lines"] if l["op"] == "+")
+    vendor = "\n".join(img["vendor"]["lines"])
+    for marker in ("BACKUP_PUBKEY", "MAINT_MAGIC", "beacon("):
+        assert marker in added and marker not in vendor
+    assert img["added_lines"] > 0 and len(img["changes"]) == 3
+    assert "203.0.113." in added, "beacon address stays in the documentation range"
 
 
 @pytest.mark.req("DEMO-FW-01")
