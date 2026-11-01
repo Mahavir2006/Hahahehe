@@ -4,12 +4,13 @@ import { levelColor, type RiskLevel } from "@/data/derive"
 
 export function Card({ title, sub, action, children, className = "" }: { title?: string; sub?: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`card ${className}`}>
+    // same frosted pane and small uppercase title as the section pages, so every page shares one look
+    <section className={`glass pane ${className}`}>
       {(title || action) && (
-        <header className="card-head">
+        <header className="pane-row pane-head">
           <div>
-            {title && <h2>{title}</h2>}
-            {sub && <p>{sub}</p>}
+            {title && <h2 className="pane-title">{title}</h2>}
+            {sub && <p className="pane-sub">{sub}</p>}
           </div>
           {action}
         </header>

@@ -3,13 +3,12 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { CheckCircle2, Hand, Link2, Lock, Play, XCircle } from "lucide-react"
 import { useNav } from "@/app/nav"
 import { Card, Tag, toast } from "@/components/ui"
-import { Donut, Loading, Ring, useApi } from "@/components/viz"
+import { CHART, Donut, Loading, Ring, useApi } from "@/components/viz"
 import { api, mutate } from "@/data/live"
 import { sectorOf } from "@/data/derive"
 
 const ORGS = ["power", "water", "hospital"] as const
 const ORG_CODE = { power: "WGEC", water: "MetroWater", hospital: "CCMN" } as const
-const TT = { background: "#0f1b27", border: "1px solid #24384c", borderRadius: 8 }
 const label = (o: string) => sectorOf[ORG_CODE[o as keyof typeof ORG_CODE]]?.label ?? o
 const short = (h: string) => (h ? `${h.slice(0, 8)}…${h.slice(-4)}` : "")
 
@@ -53,7 +52,7 @@ function AuditIntegrity() {
           const inFlight = !ok && /fewer entries|last digest/.test(r?.reason ?? "")
           return (
             <div key={o} className="ring-cell">
-              <Ring value={r?.entries ?? 0} max={Math.max(1, r?.chain_length ?? 1)} label={label(o)} sub={r ? (r.error ? r.error : r.entries !== undefined ? `${r.entries} local · ${r.chain_length} on-chain` : r.reason) : res[o]?.checking ? "re-hashing every entry…" : "queued"} color={ok ? "#3fbf8c" : inFlight ? "#f0a04b" : r ? "#ef5b5b" : "#64748b"} text={r ? (ok ? "✓" : inFlight ? "…" : "✗") : "…"} />
+              <Ring value={r?.entries ?? 0} max={Math.max(1, r?.chain_length ?? 1)} label={label(o)} sub={r ? (r.error ? r.error : r.entries !== undefined ? `${r.entries} local · ${r.chain_length} on-chain` : r.reason) : res[o]?.checking ? "re-hashing every entry…" : "queued"} color={ok ? "var(--ok)" : inFlight ? "var(--warn)" : r ? "var(--danger)" : "var(--dim)"} text={r ? (ok ? "✓" : inFlight ? "…" : "✗") : "…"} />
               {r && !r.error && <Tag tone={ok ? "ok" : inFlight ? "warn" : "danger"}>{ok ? "matches the chain" : inFlight ? "a write is still in flight, check again" : `tampering suspected at entry #${r.first_mismatch}`}</Tag>}
             </div>
           )
@@ -119,14 +118,14 @@ function MerkleProof() {
               const y = (levels.length + 1 - i) * H
               return (
                 <g key={i}>
-                  <line x1="140" y1={y} x2="140" y2={y - H + 14} stroke="#38bdf8" strokeWidth="2" />
+                  <line x1="140" y1={y} x2="140" y2={y - H + 14} stroke="var(--accent)" strokeWidth="2" />
                   <rect x="70" y={y - 14} width="140" height="28" rx="7" className={i === 0 ? "mk-leaf" : "mk-node"} />
                   <text x="140" y={y + 4} textAnchor="middle" className="mk-t">
                     {i === 0 ? `leaf ${short(proof.leaf)}` : `hash level ${i}`}
                   </text>
                   {sib && (
                     <>
-                      <line x1="210" y1={y} x2="250" y2={y} stroke="#475569" strokeDasharray="3 3" />
+                      <line x1="210" y1={y} x2="250" y2={y} stroke="var(--line-2)" strokeDasharray="3 3" />
                       <rect x="250" y={y - 12} width="150" height="24" rx="6" className="mk-sib" />
                       <text x="325" y={y + 4} textAnchor="middle" className="mk-t dim">
                         sibling {short(sib)}
@@ -142,7 +141,7 @@ function MerkleProof() {
             </text>
           </svg>
           <p className="verdict">
-            {proof.onchain_valid ? <CheckCircle2 size={16} color="#3fbf8c" /> : <XCircle size={16} color="#ef5b5b" />}
+            {proof.onchain_valid ? <CheckCircle2 size={16} color="var(--ok)" /> : <XCircle size={16} color="var(--danger)" />}
             {proof.onchain_valid ? `Valid: the root matches audit entry #${proof.entry_index} on the blockchain.` : "Invalid: the root does not match the chain."}
           </p>
         </>
@@ -153,7 +152,8 @@ function MerkleProof() {
 
 /* ------------------------------------------------ 3. agent swimlane */
 
-const TYPE_COLOR: Record<string, string> = { observation: "#94a3b8", tool_call: "#38bdf8", decision: "#f0a04b", llm_call: "#a78bfa", error: "#ef5b5b" }
+const STEP = 72 // horizontal gap per trace step, wide enough for the tool name under each dot
+const TYPE_COLOR: Record<string, string> = { observation: "var(--dim)", tool_call: "var(--accent)", decision: "var(--warn)", llm_call: "var(--accent-2)", error: "var(--danger)" }
 function AgentSwimlane() {
   const traces = useApi<any[]>("/api/traces", 20_000)
   const list = (traces.data ?? []).filter((t) => t.steps > 2).slice(-40).reverse()
@@ -162,7 +162,7 @@ function AgentSwimlane() {
   const t = useApi(sel ? `/api/traces/${sel}` : null)
   const steps: any[] = t.data?.steps ?? []
   const agents = useMemo(() => [...new Set(steps.map((s) => s.agent))], [steps])
-  const W = Math.max(520, steps.length * 46 + 120)
+  const W = Math.max(520, steps.length * STEP + 120)
   return (
     <Card title="What did each agent do?" sub="One dot per step, one lane per agent. Blue = tool call, orange = decision, grey = observation; a ring means it wrote to the blockchain">
       <select className="input" value={sel} onChange={(e) => setTid(e.target.value)} aria-label="Trace">
@@ -187,13 +187,13 @@ function AgentSwimlane() {
             ))}
             {steps.map((s, i) => {
               const li = agents.indexOf(s.agent)
-              const x = 110 + i * 46
+              const x = 110 + i * STEP
               const y = li * 44 + 24
               const prev = steps[i - 1]
               return (
                 <g key={i}>
-                  {prev && <line x1={110 + (i - 1) * 46} y1={agents.indexOf(prev.agent) * 44 + 24} x2={x} y2={y} stroke="#2c4157" />}
-                  <circle cx={x} cy={y} r="8" fill={TYPE_COLOR[s.type] ?? "#64748b"} stroke={s.side_effect === "write_chain" ? "#fff" : "none"} strokeWidth="2.5">
+                  {prev && <line x1={110 + (i - 1) * STEP} y1={agents.indexOf(prev.agent) * 44 + 24} x2={x} y2={y} stroke="var(--line-2)" />}
+                  <circle cx={x} cy={y} r="8" fill={TYPE_COLOR[s.type] ?? "var(--dim)"} stroke={s.side_effect === "write_chain" ? "var(--text)" : "none"} strokeWidth="2.5">
                     <title>{`${s.agent} · ${s.type}${s.tool ? ` · ${s.tool}` : ""}${s.note ? ` · ${s.note}` : ""}${s.ms !== undefined ? ` · ${s.ms} ms` : ""}`}</title>
                   </circle>
                   {s.tool && (
@@ -243,10 +243,10 @@ function ChainActivity() {
         <div className="chart-md">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={bars} layout="vertical" margin={{ left: 20, right: 16 }}>
-              <XAxis type="number" stroke="#64748b" fontSize={11} />
-              <YAxis type="category" dataKey="name" width={150} stroke="#64748b" fontSize={11} />
-              <Tooltip contentStyle={TT} />
-              <Bar dataKey="n" name="events" fill="#a78bfa" radius={[0, 4, 4, 0]} isAnimationActive={false} />
+              <XAxis type="number" stroke={CHART.axis} fontSize={11} />
+              <YAxis type="category" dataKey="name" width={150} stroke={CHART.axis} fontSize={11} />
+              <Tooltip contentStyle={CHART.tooltip} />
+              <Bar dataKey="n" name="events" fill="var(--accent-2)" radius={[0, 4, 4, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -282,9 +282,9 @@ function Firmware() {
                     h={140}
                     center={`${n("Match")}/${vals.length}`}
                     slices={[
-                      { name: "Genuine", value: n("Match"), color: "#3fbf8c" },
-                      { name: "Tampered", value: n("Mismatch"), color: "#ef5b5b" },
-                      { name: "Unknown", value: vals.length - n("Match") - n("Mismatch"), color: "#f0a04b" },
+                      { name: "Genuine", value: n("Match"), color: "var(--ok)" },
+                      { name: "Tampered", value: n("Mismatch"), color: "var(--danger)" },
+                      { name: "Unknown", value: vals.length - n("Match") - n("Mismatch"), color: "var(--warn)" },
                     ]}
                   />
                   <div className="chips-row">
@@ -338,7 +338,7 @@ function Brake() {
             {st.data ? `${st.data.pending_writes} pending writes · block ${st.data.block}` : "…"}
           </small>
         </div>
-        {paused ? <Hand size={30} color="#ef5b5b" /> : <Play size={30} color="#3fbf8c" />}
+        {paused ? <Hand size={30} color="var(--danger)" /> : <Play size={30} color="var(--ok)" />}
       </div>
     </Card>
   )
@@ -404,23 +404,23 @@ function Health() {
       ) : (
         <>
           <div className="rings-row">
-            <Ring value={t.critic_reject_rate} max={1} label="Critic rejects" text={`${Math.round(t.critic_reject_rate * 100)}%`} color="#f0a04b" size={96} />
-            <Ring value={t.llm_fallback_rate} max={1} label="LLM fallbacks" text={`${Math.round(t.llm_fallback_rate * 100)}%`} color="#a78bfa" size={96} />
-            <Ring value={t.injection_detections} max={Math.max(1, t.advisories)} label="Injections caught" text={String(t.injection_detections)} color="#ef5b5b" size={96} />
-            <Ring value={Math.min(t.mean_pipeline_latency_s ?? 0, 10)} max={10} label="Avg pipeline time" text={`${(t.mean_pipeline_latency_s ?? 0).toFixed(1)}s`} color="#38bdf8" size={96} />
+            <Ring value={t.critic_reject_rate} max={1} label="Critic rejects" text={`${Math.round(t.critic_reject_rate * 100)}%`} color="var(--warn)" size={96} />
+            <Ring value={t.llm_fallback_rate} max={1} label="LLM fallbacks" text={`${Math.round(t.llm_fallback_rate * 100)}%`} color="var(--accent-2)" size={96} />
+            <Ring value={t.injection_detections} max={Math.max(1, t.advisories)} label="Injections caught" text={String(t.injection_detections)} color="var(--danger)" size={96} />
+            <Ring value={Math.min(t.mean_pipeline_latency_s ?? 0, 10)} max={10} label="Avg pipeline time" text={`${(t.mean_pipeline_latency_s ?? 0).toFixed(1)}s`} color="var(--accent)" size={96} />
           </div>
           <div className="chart-sm">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={per} margin={{ top: 8, right: 8, left: -18 }}>
-                <CartesianGrid stroke="#1e2f40" vertical={false} />
-                <XAxis dataKey="org" stroke="#64748b" fontSize={11} />
-                <YAxis allowDecimals={false} stroke="#64748b" fontSize={11} />
-                <Tooltip contentStyle={TT} />
+                <CartesianGrid stroke={CHART.grid} vertical={false} />
+                <XAxis dataKey="org" stroke={CHART.axis} fontSize={11} />
+                <YAxis allowDecimals={false} stroke={CHART.axis} fontSize={11} />
+                <Tooltip contentStyle={CHART.tooltip} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="Advisories" fill="#38bdf8" isAnimationActive={false} />
-                <Bar dataKey="Sent to humans" fill="#f0a04b" isAnimationActive={false} />
-                <Bar dataKey="Executed" fill="#3fbf8c" isAnimationActive={false} />
-                <Bar dataKey="Failed" fill="#ef5b5b" isAnimationActive={false} />
+                <Bar dataKey="Advisories" fill="var(--accent)" isAnimationActive={false} />
+                <Bar dataKey="Sent to humans" fill="var(--warn)" isAnimationActive={false} />
+                <Bar dataKey="Executed" fill="var(--ok)" isAnimationActive={false} />
+                <Bar dataKey="Failed" fill="var(--danger)" isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>

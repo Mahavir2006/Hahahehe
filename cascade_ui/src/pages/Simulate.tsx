@@ -3,7 +3,7 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 
 import { CalendarClock, FastForward, RotateCcw, Send, ShieldAlert, Zap } from "lucide-react"
 import { useNav } from "@/app/nav"
 import { Card, Tag, toast } from "@/components/ui"
-import { Flow, Loading, Ring, useApi, type NodeState } from "@/components/viz"
+import { CHART, Flow, Loading, Ring, useApi, type NodeState } from "@/components/viz"
 import { api, mutate, sim, useLive } from "@/data/live"
 import { sectorOf } from "@/data/derive"
 
@@ -11,7 +11,6 @@ const ORGS = ["power", "water", "hospital"] as const
 const ORG_CODE = { power: "WGEC", water: "MetroWater", hospital: "CCMN" } as const
 const STAGES = ["intake", "risk", "cascade", "plan", "critic", "gate", "execute"]
 const STAGE_LABEL: Record<string, string> = { intake: "Intake", risk: "Risk", cascade: "Cascade", plan: "Planner", critic: "Critic", gate: "Humans", execute: "Executor" }
-const TT = { background: "#0f1b27", border: "1px solid #24384c", borderRadius: 8 }
 
 const SAMPLES = [
   {
@@ -234,12 +233,12 @@ function TimeMachine() {
             <div className="chart-sm">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={bars} layout="vertical" margin={{ left: 10, right: 16 }}>
-                  <XAxis type="number" stroke="#64748b" fontSize={11} />
-                  <YAxis type="category" dataKey="id" width={90} stroke="#64748b" fontSize={11} />
-                  <Tooltip contentStyle={TT} formatter={(v) => [`${Number(v) > 0 ? "+" : ""}${Number(v).toFixed(1)} risk points`, "change"]} />
+                  <XAxis type="number" stroke={CHART.axis} fontSize={11} />
+                  <YAxis type="category" dataKey="id" width={90} stroke={CHART.axis} fontSize={11} />
+                  <Tooltip contentStyle={CHART.tooltip} formatter={(v) => [`${Number(v) > 0 ? "+" : ""}${Number(v).toFixed(1)} risk points`, "change"]} />
                   <Bar dataKey="delta" isAnimationActive={false}>
                     {bars.map((b: any) => (
-                      <Cell key={b.id} fill={b.delta > 0 ? "#ef5b5b" : "#3fbf8c"} />
+                      <Cell key={b.id} fill={b.delta > 0 ? "var(--danger)" : "var(--ok)"} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -272,7 +271,7 @@ function ServiceCascade() {
   }, [])
   const d = res.data
   const max = Math.max(1, ...(d?.chain ?? []).map((c: any) => c.time_to_impact_minutes ?? 0))
-  const colorOf = (o: string) => sectorOf[ORG_CODE[o as keyof typeof ORG_CODE]]?.color ?? "#94a3b8"
+  const colorOf = (o: string) => sectorOf[ORG_CODE[o as keyof typeof ORG_CODE]]?.color ?? "var(--muted)"
   return (
     <Card title="3 · If this service fails, what fails next?" sub="Cascade agent: chance each dependent service degrades, and how soon">
       <select className="input" value={pick} onChange={(e) => setPick(e.target.value)} aria-label="Source service">
@@ -300,7 +299,7 @@ function ServiceCascade() {
           </div>
           {d.chain.length > 0 && (
             <svg className="tline" viewBox="0 0 600 70" role="img" aria-label="Time to impact">
-              <line x1="20" y1="35" x2="580" y2="35" stroke="#2c4157" strokeWidth="2" />
+              <line x1="20" y1="35" x2="580" y2="35" stroke="var(--line-2)" strokeWidth="2" />
               <circle cx="20" cy="35" r="6" fill={colorOf(d.source.org)} />
               <text x="20" y="60" textAnchor="middle" className="tl-t">
                 0 min
@@ -414,10 +413,10 @@ function PlanAnatomy() {
               <div className="chart-sm">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={steps} margin={{ top: 8, right: 8, left: -14 }}>
-                    <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
-                    <YAxis stroke="#64748b" fontSize={11} domain={["auto", "auto"]} />
-                    <Tooltip contentStyle={TT} formatter={(v) => [Number(v).toFixed(2), "org risk"]} />
-                    <Bar dataKey="risk" fill="#38bdf8" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                    <XAxis dataKey="name" stroke={CHART.axis} fontSize={11} />
+                    <YAxis stroke={CHART.axis} fontSize={11} domain={["auto", "auto"]} />
+                    <Tooltip contentStyle={CHART.tooltip} formatter={(v) => [Number(v).toFixed(2), "org risk"]} />
+                    <Bar dataKey="risk" fill="var(--accent)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

@@ -118,7 +118,7 @@ export default function Dashboard() {
           <h2 className="pane-title">Risk trend</h2>
           <div className="trendchart">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={riskTimelineData} margin={{ top: 6, right: 4, bottom: 0, left: -26 }}>
+              <AreaChart data={riskTimelineData.slice() /* recharts freezes its data; keep the live array mutable */} margin={{ top: 6, right: 4, bottom: 0, left: -26 }}>
                 <defs>
                   <linearGradient id="rg" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="0" stopColor="var(--accent)" stopOpacity={0.35} />
@@ -126,7 +126,7 @@ export default function Dashboard() {
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="dayIndex" tickFormatter={(d) => `D${d}`} stroke="var(--dim)" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis domain={[30, 90]} stroke="var(--dim)" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis domain={["auto", "auto"]} stroke="var(--dim)" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--text)", fontSize: 12 }}
                   labelFormatter={(d) => riskTimelineData[Number(d) - 1]?.day}

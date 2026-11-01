@@ -518,8 +518,9 @@ export function startPolling(ms = 8000) {
     try {
       const h = await api("/api/ps03/health")
       if (h.sim_day !== lastDay) {
-        lastDay = h.sim_day
+        // mark the day as seen only once its refresh succeeded; a failed refresh is retried on the next tick
         await refresh()
+        lastDay = h.sim_day
       } else {
         const c = await api("/api/ps03/chain/live?limit=12")
         Object.assign(chain, { block: c.block, events: c.events ?? [], reassessments: c.reassessments ?? 0 })

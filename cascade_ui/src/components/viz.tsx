@@ -4,6 +4,13 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 import { api } from "@/data/live"
 
+/** Chart styling shared with the section pages: theme variables, so charts follow light and dark mode. */
+export const CHART = {
+  axis: "var(--dim)",
+  grid: "var(--line)",
+  tooltip: { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 8, color: "var(--text)", fontSize: 12 },
+} as const
+
 export function useApi<T = any>(path: string | null, intervalMs = 0) {
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState("")
@@ -38,14 +45,14 @@ export function useApi<T = any>(path: string | null, intervalMs = 0) {
 }
 
 /** Circular gauge: value/max as an arc with a big number in the middle. */
-export function Ring({ value, max = 1, label, sub, color = "#38bdf8", size = 112, text }: { value: number; max?: number; label: string; sub?: string; color?: string; size?: number; text?: string }) {
+export function Ring({ value, max = 1, label, sub, color = "var(--accent)", size = 112, text }: { value: number; max?: number; label: string; sub?: string; color?: string; size?: number; text?: string }) {
   const r = size / 2 - 9
   const c = 2 * Math.PI * r
   const f = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0
   return (
     <figure className="gauge" style={{ width: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`${label}: ${text ?? value}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(148,163,184,.15)" strokeWidth="9" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line-2)" strokeWidth="9" />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="9" strokeLinecap="round" strokeDasharray={`${c * f} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} style={{ transition: "stroke-dasharray .6s ease" }} />
         <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="ring-num">
           {text ?? value}
@@ -72,7 +79,7 @@ export function Donut({ slices, center, h = 170 }: { slices: { name: string; val
                 <Cell key={s.name} fill={s.color} />
               ))}
             </Pie>
-            <Tooltip contentStyle={{ background: "#0f1b27", border: "1px solid #24384c", borderRadius: 8 }} />
+            <Tooltip contentStyle={CHART.tooltip} />
           </PieChart>
         </ResponsiveContainer>
         <span className="donut-center">{center ?? total}</span>

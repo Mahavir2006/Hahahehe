@@ -73,7 +73,7 @@
 .day-card { display: grid; gap: 6px; padding: 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
 .day-card strong { font-size: 15px; }
 .day-card p { color: var(--muted); font-size: 13px; }
-@media (max-width: 1180px) { .scen-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .scen-body { grid-template-columns: 1fr; } }
+@media (max-width: 1180px) { .scen-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .scen-body { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 760px) { .scen-grid { grid-template-columns: 1fr 1fr; } }
 
 /* audit trail */
@@ -140,6 +140,9 @@ select.input option { background: var(--surface); color: var(--text); }
 .sim-map { min-height: 0; }
 @media (max-height: 760px) { .sim-controls .pane-title.mt { margin-top: 4px; } .radio-list label { padding: 5px 8px; } }
 @media (max-width: 1180px) { .sim-layout { height: auto; } }
+/* the desktop column rule above comes after the breakpoints near the top, so restate them here */
+@media (max-width: 1180px) { .sim-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+@media (max-width: 760px) { .sim-layout { grid-template-columns: minmax(0, 1fr); } }
 
 /* response dialog */
 .respond { position: fixed; z-index: 71; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(640px, calc(100vw - 24px)); max-height: calc(100vh - 40px); display: flex; flex-direction: column; border: 1px solid var(--glass-border); border-radius: 18px; box-shadow: var(--glass-hi), 0 30px 80px rgba(0, 0, 0, 0.5); animation: card-in 0.18s ease; }

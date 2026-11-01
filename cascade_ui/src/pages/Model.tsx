@@ -1,9 +1,9 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { CHART } from "@/components/viz"
 import { Card, Tag } from "@/components/ui"
 import { MODEL } from "@/data/derive"
 import { modelInfo, useLive } from "@/data/live"
 
-const TT = { background: "#0f1b27", border: "1px solid #24384c", borderRadius: 8 }
 
 function RuleQuality() {
   const rules = Object.entries(modelInfo.raw?.rules_metrics?.rules ?? {}).map(([k, v]: [string, any]) => ({
@@ -19,13 +19,13 @@ function RuleQuality() {
         <div className="chart-md">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={rules} margin={{ top: 8, right: 8, left: -14 }}>
-              <CartesianGrid stroke="#1e2f40" vertical={false} />
-              <XAxis dataKey="rule" stroke="#64748b" fontSize={10} interval={0} angle={-18} textAnchor="end" height={50} />
-              <YAxis unit="%" domain={[0, 100]} stroke="#64748b" fontSize={11} />
-              <Tooltip contentStyle={TT} formatter={(v) => `${v}%`} />
+              <CartesianGrid stroke={CHART.grid} vertical={false} />
+              <XAxis dataKey="rule" stroke={CHART.axis} fontSize={10} interval={0} angle={-18} textAnchor="end" height={50} />
+              <YAxis unit="%" domain={[0, 100]} stroke={CHART.axis} fontSize={11} />
+              <Tooltip contentStyle={CHART.tooltip} formatter={(v) => `${v}%`} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="Precision" fill="#38bdf8" isAnimationActive={false} />
-              <Bar dataKey="Recall" fill="#3fbf8c" isAnimationActive={false} />
+              <Bar dataKey="Precision" fill="var(--accent)" isAnimationActive={false} />
+              <Bar dataKey="Recall" fill="var(--ok)" isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -35,10 +35,10 @@ function RuleQuality() {
         <div className="chart-md">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={back} layout="vertical" margin={{ left: 20, right: 24 }}>
-              <XAxis type="number" unit=" d" stroke="#64748b" fontSize={11} />
-              <YAxis type="category" dataKey="name" width={130} stroke="#64748b" fontSize={11} />
-              <Tooltip contentStyle={TT} formatter={(v) => `${v} days`} />
-              <Bar dataKey="MAE" fill="#f0a04b" radius={[0, 4, 4, 0]} isAnimationActive={false} />
+              <XAxis type="number" unit=" d" stroke={CHART.axis} fontSize={11} />
+              <YAxis type="category" dataKey="name" width={130} stroke={CHART.axis} fontSize={11} />
+              <Tooltip contentStyle={CHART.tooltip} formatter={(v) => `${v} days`} />
+              <Bar dataKey="MAE" fill="var(--warn)" radius={[0, 4, 4, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
