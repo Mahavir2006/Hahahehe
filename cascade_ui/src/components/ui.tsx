@@ -64,18 +64,68 @@ export function Skeleton({ h = 120 }: { h?: number }) {
   return <div className="skeleton" style={{ height: h }} aria-hidden />
 }
 
-export function PageSkeleton() {
+/** Loading placeholder shaped like the page that is about to appear. */
+export function PageSkeleton({ kind = "default" }: { kind?: string }) {
+  const rows = (n: number, h = 44) => Array.from({ length: n }, (_, i) => <Skeleton key={i} h={h} />)
+  let body: React.ReactNode
+  if (kind === "dashboard")
+    body = (
+      <div className="home">
+        <div className="home-side">{[<Skeleton key="a" h={210} />, <Skeleton key="b" h={360} />]}</div>
+        <div className="skeleton sk-map" />
+        <div className="home-side">{[<Skeleton key="a" h={200} />, <Skeleton key="b" h={170} />, <Skeleton key="c" h={200} />]}</div>
+      </div>
+    )
+  else if (kind === "map")
+    body = (
+      <>
+        <Skeleton h={40} />
+        <div className="grid-map">
+          <Skeleton h={560} />
+          <div className="sk-col">{rows(6, 54)}</div>
+        </div>
+      </>
+    )
+  else if (kind === "assets")
+    body = (
+      <>
+        <div className="grid-3">{rows(3, 130)}</div>
+        <Skeleton h={44} />
+        <div className="sk-col">{rows(8, 48)}</div>
+      </>
+    )
+  else if (kind === "asset")
+    body = (
+      <>
+        <Skeleton h={36} />
+        <Skeleton h={96} />
+        <Skeleton h={84} />
+        <div className="grid-2">
+          <Skeleton h={480} />
+          <Skeleton h={480} />
+        </div>
+      </>
+    )
+  else if (kind === "actions" || kind === "risk")
+    body = (
+      <>
+        <Skeleton h={150} />
+        <div className="sk-col">{rows(7, 64)}</div>
+      </>
+    )
+  else
+    body = (
+      <>
+        <Skeleton h={160} />
+        <div className="grid-2">
+          <Skeleton h={300} />
+          <Skeleton h={300} />
+        </div>
+      </>
+    )
   return (
     <div className="page" aria-busy="true" aria-label="Loading">
-      <div className="grid-stats">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Skeleton key={i} h={92} />
-        ))}
-      </div>
-      <div className="grid-2">
-        <Skeleton h={320} />
-        <Skeleton h={320} />
-      </div>
+      {body}
     </div>
   )
 }

@@ -71,7 +71,10 @@ export default function Dashboard() {
 
       {/* centre: the map */}
       <section className="glass home-map">
-        <RiskMap selected={sel} onSelect={setSel} info={(a) => <MapInfo a={a} onDetails={() => openAsset(a.id)} />} />
+        <RiskMap selected={sel} onSelect={setSel} info={(a) => <MapInfo a={a} onDetails={() => {
+              setSel(null)
+              openAsset(a.id)
+            }} />} />
       </section>
 
       {/* right: exposure, trend and impact */}

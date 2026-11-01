@@ -26,7 +26,7 @@ export function MapInfo({ a, onDetails }: { a: Asset; onDetails: () => void }) {
         </dd>
       </dl>
       <button className="btn btn-primary btn-sm" onClick={onDetails}>
-        Full details <ArrowRight size={13} />
+        Full analysis & fixes <ArrowRight size={13} />
       </button>
     </div>
   )

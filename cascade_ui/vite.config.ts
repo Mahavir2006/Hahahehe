@@ -5,6 +5,7 @@ import fs from "node:fs"
 import path from "node:path"
 
 import siteConfiguration from "./.figma/make/site.json"
+import { contentSecurityPolicy, precompress } from "./vite.prod"
 
 // Vite config — https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -30,6 +31,8 @@ export default defineConfig(({ mode }) => {
       figmaReactRefreshBoundaryFallback(),
       figmaMakeKitPlugin({ storiesGlob: "/src/**/*.stories.{ts,tsx,js,jsx}" }),
       figmaLinkedPackageSourcemaps(),
+      contentSecurityPolicy(),
+      precompress(),
     ],
     resolve: {
       alias: {

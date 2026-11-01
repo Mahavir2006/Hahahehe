@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { Check } from "lucide-react"
 import { useNav } from "@/app/nav"
 import { Card, Level, Tag, toast } from "@/components/ui"
+import { appendAudit } from "@/data/audit"
 import { actionsFor, levelColor, levelOf, portfolio, ranked, riskAfter, type Action } from "@/data/derive"
 
 const KINDS: Action["kind"][] = ["Patch", "Segment", "Access control", "Monitoring", "Incident response"]
@@ -26,7 +27,9 @@ export default function Recommendations() {
 
   const approve = (id: string, title: string) => {
     // optimistic: count the vote immediately
-    setApproved((s) => ({ ...s, [id]: Math.min(2, (s[id] ?? 0) + 1) }))
+    const votes = Math.min(2, (approved[id] ?? 0) + 1)
+    setApproved((s) => ({ ...s, [id]: votes }))
+    appendAudit({ kind: "Approval", actor: votes === 1 ? "Approver 1 (security lead)" : "Approver 2 (operations owner)", contract: "ApprovalGate", subject: title, detail: `Human vote ${votes} of 2${votes === 2 ? " — approved, ready to execute" : ""}` })
     toast((approved[id] ?? 0) + 1 >= 2 ? "Approved — ready to execute" : "Approval 1 of 2 recorded", title)
   }
 

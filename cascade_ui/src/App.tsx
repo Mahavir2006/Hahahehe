@@ -1,20 +1,40 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Bell, Menu, Moon, Search, Shield, Sun, X } from "lucide-react"
-import { NavContext, PAGES, type PageId } from "@/app/nav"
+import { ALIASES, HIDDEN, NavContext, PAGES, type RouteId } from "@/app/nav"
 import { AssetPanel } from "@/components/AssetPanel"
+import { ResponseDialog } from "@/components/ResponseDialog"
 import { ErrorBoundary, PageSkeleton, Toaster } from "@/components/ui"
 import { assets, assetById, detectionsData, ranked } from "@/data/derive"
 
 // every page is its own lazily-loaded chunk (code splitting)
-const lazyPages = Object.fromEntries(PAGES.map((p) => [p.id, lazy(p.load)])) as Record<PageId, React.LazyExoticComponent<React.ComponentType>>
+const lazyPages = Object.fromEntries([...PAGES, ...HIDDEN].map((p) => [p.id, lazy(p.load)])) as Record<RouteId, React.LazyExoticComponent<React.ComponentType>>
 
-function readHash(): { page: PageId; asset: string | null } {
-  const [, page, asset] = location.hash.match(/^#\/([a-z]+)(?:\/([A-Z]{2}-\d{3}))?/) ?? []
-  return { page: PAGES.some((p) => p.id === page) ? (page as PageId) : "dashboard", asset: asset && assetById.has(asset) ? asset : null }
+interface Route {
+  page: RouteId
+  asset: string | null
+  missing: string | null // what the user asked for when it does not exist
+}
+
+/**
+ * Hash routes:  #/<page>            a page
+ *               #/<page>/<ASSET-ID> a page with the asset side panel open
+ *               #/asset/<ASSET-ID>  full-page analysis of one asset
+ * Anything else falls back to the not-found page (an empty hash is the home page).
+ */
+export function readHash(hash = location.hash): Route {
+  const path = hash.replace(/^#\/?/, "")
+  if (!path) return { page: "dashboard", asset: null, missing: null }
+  const [raw, id, ...rest] = path.split("/")
+  const page: string = ALIASES[raw] ?? raw
+  const known = PAGES.some((p) => p.id === page) || page === "asset"
+  if (!known || rest.length) return { page: "notfound", asset: null, missing: `#/${path}` }
+  if (page === "asset" && !id) return { page: "notfound", asset: null, missing: "an asset ID" }
+  if (id && !assetById.has(id)) return { page: "notfound", asset: null, missing: `asset ${decodeURIComponent(id)}` }
+  return { page: page as RouteId, asset: id ?? null, missing: null }
 }
 
 export default function App() {
-  const [{ page, asset }, setRoute] = useState(readHash)
+  const [{ page, asset, missing }, setRoute] = useState(() => readHash())
   const [menuOpen, setMenuOpen] = useState(false)
   const [alertsOpen, setAlertsOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -31,22 +51,37 @@ export default function App() {
     }
   }, [theme])
 
+  // lock page scroll behind the menu and the asset box
+  useEffect(() => {
+    document.body.classList.toggle("locked", menuOpen || (!!asset && page !== "asset"))
+  }, [menuOpen, asset, page])
+
   useEffect(() => {
     const onHash = () => setRoute(readHash())
     window.addEventListener("hashchange", onHash)
     return () => window.removeEventListener("hashchange", onHash)
   }, [])
 
-  const go = useCallback((p: PageId) => {
+  const go = useCallback((p: RouteId) => {
     location.hash = `#/${p}`
     setMenuOpen(false)
     window.scrollTo({ top: 0 })
   }, [])
+  // quick look: side panel on top of the current page (the asset page itself has no panel)
   const openAsset = useCallback((id: string) => {
-    location.hash = `#/${readHash().page}/${id}`
+    const cur = readHash().page
+    location.hash = cur === "asset" || cur === "notfound" ? `#/asset/${id}` : `#/${cur}/${id}`
+  }, [])
+  const openAssetPage = useCallback((id: string) => {
+    location.hash = `#/asset/${id}`
+    window.scrollTo({ top: 0 })
   }, [])
   const closeAsset = useCallback(() => {
     location.hash = `#/${readHash().page}`
+  }, [])
+  const back = useCallback(() => {
+    if (history.length > 1) history.back()
+    else location.hash = "#/dashboard"
   }, [])
 
   // keyboard: "/" or Ctrl+K focuses search, Escape closes the menu
@@ -71,9 +106,9 @@ export default function App() {
     return assets.filter((a) => `${a.id} ${a.name} ${a.location} ${a.vulnerability} ${a.type}`.toLowerCase().includes(q)).slice(0, 6)
   }, [query])
 
-  const def = PAGES.find((p) => p.id === page)!
+  const def = [...PAGES, ...HIDDEN].find((p) => p.id === page)!
   const Page = lazyPages[page]
-  const nav = useMemo(() => ({ page, go, openAsset, focusAsset: asset }), [page, go, openAsset, asset])
+  const nav = useMemo(() => ({ page, go, openAsset, openAssetPage, back, focusAsset: asset, missing }), [page, go, openAsset, openAssetPage, back, asset, missing])
   const critical = ranked.filter((a) => a.level === "Critical")
 
   return (
@@ -193,14 +228,15 @@ export default function App() {
 
       <main id="main" className={`main ${page === "dashboard" ? "main-home" : ""}`}>
         <h1 className="sr-only">{def.label}</h1>
-        <ErrorBoundary resetKey={page}>
-          <Suspense fallback={<PageSkeleton />}>
-            <Page />
+        <ErrorBoundary resetKey={page + (asset ?? "")}>
+          <Suspense fallback={<PageSkeleton kind={page} />}>
+            <Page key={page === "asset" ? asset : page} />
           </Suspense>
         </ErrorBoundary>
       </main>
 
-      <AssetPanel id={asset} onClose={closeAsset} />
+      <AssetPanel id={page === "asset" ? null : asset} onClose={closeAsset} onFullPage={openAssetPage} />
+      <ResponseDialog />
       <Toaster />
     </NavContext.Provider>
   )

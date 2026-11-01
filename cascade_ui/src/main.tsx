@@ -5,6 +5,8 @@ import App from "./App"
 import "./index.css"
 import "./theme.css"
 import "./map.css"
+import "./skin.css"
+import "./sections.css"
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
